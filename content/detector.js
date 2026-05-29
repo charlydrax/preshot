@@ -3,8 +3,12 @@ console.log('[PreShot] Content script chargé ✅');
 console.log('[PreShot] detector.js loaded on', location.href);
 
 const PRESHOT_SIGNAL_THRESHOLD = 2;
-const PRESHOT_SESSION_KEY = 'preshot_alerted';
 const PRESHOT_DEBOUNCE_MS = 500;
+
+// État anti-doublon en mémoire : réinitialisé à chaque chargement de page
+// (donc la notif réapparaît à chaque rafraîchissement), mais conservé pendant
+// la vie de la page pour ne pas réinjecter la bannière à chaque mutation DOM.
+let preshot_alerted = false;
 
 const PRESHOT_URL_REGEX = /\/(checkout|panier|order|payment|cart|paiement|commande)/i;
 
@@ -37,7 +41,7 @@ function detectPaymentLogos() {
 }
 
 function analyzePage() {
-  if (sessionStorage.getItem(PRESHOT_SESSION_KEY)) return;
+  if (preshot_alerted) return;
 
   const urlSignal = detectUrlPattern();
   const fieldsSignal = detectSensitiveFields();
@@ -55,7 +59,7 @@ function analyzePage() {
   );
 
   if (signalCount >= PRESHOT_SIGNAL_THRESHOLD) {
-    sessionStorage.setItem(PRESHOT_SESSION_KEY, '1');
+    preshot_alerted = true;
     chrome.runtime.sendMessage({
       type: 'CHECKOUT_DETECTED',
       url: location.hostname,
