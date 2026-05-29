@@ -46,6 +46,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleGetStatus(message, sender, sendResponse);
     return true;
   }
+  if (message.type === 'OPEN_SIDE_PANEL') {
+    handleOpenSidePanel(sender, sendResponse);
+    return true;
+  }
   // Message inconnu : on ne garde pas le canal ouvert.
   return false;
 });
@@ -89,7 +93,29 @@ async function handleCheckoutDetected(message, sender, sendResponse) {
       ...result // redFlags, verdict
     });
 
-    // 5) Accusé de réception au content script.
+    // 5) Persister le résultat par tabId (chrome.storage.session survit aux
+    //    redémarrages du service worker dans la même session navigateur).
+    if (typeof tabId === 'number') {
+      await setTabResult(tabId, {
+        verdict: result.verdict,
+        redFlagCount,
+        redFlags: result.redFlags,
+        hostname
+      });
+    }
+
+    // 6) Afficher la bannière dans le content script de l'onglet actif.
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(
+          tabs[0].id,
+          { type: 'SHOW_BANNER', redFlagsCount: redFlagCount, verdict: result.verdict },
+          () => void chrome.runtime.lastError
+        );
+      }
+    });
+
+    // 7) Accusé de réception au content script.
     sendResponse({ status: 'ok', redFlagCount });
   } catch (err) {
     console.error('[PreShot] handleCheckoutDetected error:', err);
@@ -114,10 +140,16 @@ async function handleGetStatus(message, sender, sendResponse) {
       return;
     }
 
+    // Priorité 1 : résultat scopé au tabId (fiable même après redémarrage du SW).
+    const tabResult = await getTabResult(activeTab.id);
+    if (tabResult) {
+      sendResponse(tabResult);
+      return;
+    }
+
+    // Priorité 2 : cache hostname (fallback si tabId non disponible).
     const hostname = getHostname(activeTab.url);
     const cached = await getCachedAnalysis(hostname);
-
-    // `popup.js` teste `status.verdict === null` pour l'état "aucune analyse".
     sendResponse(cached || { verdict: null });
   } catch (err) {
     console.error('[PreShot] handleGetStatus error:', err);
@@ -156,6 +188,24 @@ function getVerdictLevel(redFlagCount) {
 }
 
 // ------------------------------------------------------------
+// OPEN_SIDE_PANEL — Content Script → Service Worker
+// ------------------------------------------------------------
+// Déclenché quand l'utilisateur clique "Voir le diagnostic" dans la bannière.
+// chrome.sidePanel.open() nécessite un windowId ou tabId.
+async function handleOpenSidePanel(sender, sendResponse) {
+  try {
+    const tabId = sender.tab && sender.tab.id;
+    if (tabId) {
+      await chrome.sidePanel.open({ tabId });
+    }
+    sendResponse({ status: 'ok' });
+  } catch (err) {
+    console.error('[PreShot] handleOpenSidePanel error:', err);
+    sendResponse({ status: 'error' });
+  }
+}
+
+// ------------------------------------------------------------
 // Diffusion vers le side panel
 // ------------------------------------------------------------
 // runtime.sendMessage lève une erreur "Could not establish connection"
@@ -165,6 +215,25 @@ function broadcastAnalysisComplete(data) {
   chrome.runtime.sendMessage({ type: 'ANALYSIS_COMPLETE', data }, () => {
     void chrome.runtime.lastError; // panel non ouvert : sans gravité
   });
+}
+
+// ------------------------------------------------------------
+// Résultats par tabId — chrome.storage.session
+// ------------------------------------------------------------
+// Survit aux redémarrages du service worker dans la même session navigateur,
+// contrairement à une simple variable globale qui serait réinitialisée.
+
+function tabKey(tabId) {
+  return 'tab_' + tabId;
+}
+
+async function setTabResult(tabId, result) {
+  await chrome.storage.session.set({ [tabKey(tabId)]: result });
+}
+
+async function getTabResult(tabId) {
+  const data = await chrome.storage.session.get(tabKey(tabId));
+  return data[tabKey(tabId)] || null;
 }
 
 // ------------------------------------------------------------
