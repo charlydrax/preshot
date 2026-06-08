@@ -86,4 +86,13 @@ function preshot_onMutation() {
 const preshot_observer = new MutationObserver(preshot_onMutation);
 preshot_observer.observe(document.body, { childList: true, subtree: true });
 
+// Re-analyse forcée depuis le side panel (bouton « Re-analyser »). Le SW a
+// déjà vidé le cache ; on lève le garde anti-doublon et on relance l'analyse.
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'RUN_ANALYSIS') {
+    preshot_alerted = false;
+    analyzePage();
+  }
+});
+
 analyzePage();

@@ -54,6 +54,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleOpenSidePanel(sender, sendResponse);
     return true;
   }
+  if (message.type === 'REANALYZE') {
+    handleReanalyze(message, sender, sendResponse);
+    return true;
+  }
   // Message inconnu : on ne garde pas le canal ouvert.
   return false;
 });
@@ -216,6 +220,42 @@ async function handleOpenSidePanel(sender, sendResponse) {
     sendResponse({ status: 'ok' });
   } catch (err) {
     console.error('[PreShot] handleOpenSidePanel error:', err);
+    sendResponse({ status: 'error' });
+  }
+}
+
+// ------------------------------------------------------------
+// REANALYZE — Side Panel → Service Worker
+// ------------------------------------------------------------
+// Déclenché par le bouton « Re-analyser » du panneau. On vide le cache du
+// site (et le résultat scopé à l'onglet) pour forcer une analyse fraîche
+// — y compris un nouveau lookup WHOIS — puis on demande au content script
+// de relancer l'analyse de la page (RUN_ANALYSIS). Le content script
+// renverra un CHECKOUT_DETECTED qui repassera par tout le pipeline.
+async function handleReanalyze(message, sender, sendResponse) {
+  try {
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!activeTab || !activeTab.url) {
+      sendResponse({ status: 'no-tab' });
+      return;
+    }
+
+    const hostname = getHostname(activeTab.url);
+
+    // Bypass cache : on supprime l'entrée hostname + le résultat de l'onglet.
+    await chrome.storage.local.remove(cacheKey(hostname));
+    if (typeof activeTab.id === 'number') {
+      await chrome.storage.session.remove(tabKey(activeTab.id));
+      chrome.tabs.sendMessage(
+        activeTab.id,
+        { type: 'RUN_ANALYSIS' },
+        () => void chrome.runtime.lastError // page sans content script : sans gravité
+      );
+    }
+
+    sendResponse({ status: 'ok' });
+  } catch (err) {
+    console.error('[PreShot] handleReanalyze error:', err);
     sendResponse({ status: 'error' });
   }
 }
