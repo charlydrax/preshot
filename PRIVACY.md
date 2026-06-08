@@ -4,7 +4,7 @@ _Dernière mise à jour : 8 juin 2026_
 
 ## 1. Introduction
 
-**PreShot** est une extension de navigateur (Chrome / Firefox) qui vous aide à
+**PreShot** est une extension de navigateur (Chrome) qui vous aide à
 repérer les sites potentiellement frauduleux au moment du paiement. Lorsqu'elle
 détecte une page de paiement, elle affiche un diagnostic de fiabilité fondé sur
 quelques signaux simples (connexion sécurisée, mentions légales, ancienneté du

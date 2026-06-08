@@ -21,7 +21,7 @@ const TRUSTED_DOMAINS = [
   'sncf-connect.com', 'booking.com', 'airbnb.fr', 'paypal.com', 'stripe.com',
   'shopify.com', 'ebay.fr', 'aliexpress.com', 'apple.com', 'microsoft.com',
   'google.com', 'etsy.com', 'sephora.fr', 'nocibe.fr', 'yves-rocher.fr',
-  'ikea.com', 'h-m.com', 'uniqlo.com', 'zara.com', 'nike.com', 'adidas.fr'
+  'ikea.com', 'hm.com', 'uniqlo.com', 'zara.com', 'nike.com', 'adidas.fr'
 ];
 
 // ------------------------------------------------------------

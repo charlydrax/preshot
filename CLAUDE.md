@@ -4,7 +4,7 @@
 
 ## 🎯 Projet
 
-**PreShot** est une extension navigateur (Chrome / Firefox) qui déclenche une alerte au doute au moment du paiement et affiche un diagnostic de fiabilité du site pour détecter une arnaque en ligne.
+**PreShot** est une extension navigateur (Chrome) qui déclenche une alerte au doute au moment du paiement et affiche un diagnostic de fiabilité du site pour détecter une arnaque en ligne.
 
 ## 🧰 Stack
 
@@ -18,17 +18,21 @@
 preshot/
 ├── manifest.json           # Manifest V3
 ├── background/
-│   └── service_worker.js   # Badge, cache, calculs
+│   └── service_worker.js   # Badge, cache, WHOIS/RDAP, verdict
 ├── content/
-│   ├── detector.js         # Trigger : détection checkout
+│   ├── detector.js         # Trigger : détection checkout + scoring local
 │   └── banner.js           # Notification latérale
 ├── panel/
 │   ├── panel.html          # Diagnostic
 │   ├── panel.css
 │   └── panel.js
+├── popup/
+│   ├── popup.html          # État courant + accès au diagnostic
+│   └── popup.js
 ├── utils/
-│   └── scoring.js          # Calcul du verdict
-└── icons/                  # Vert / orange / rouge
+│   ├── scoring.js          # Calcul des red flags + verdict
+│   └── whitelist.js        # Domaines de confiance + domaine enregistrable
+└── icons/                  # Vert / orange / rouge (16/32/48/128)
 ```
 
 | Composant | Rôle |
@@ -55,11 +59,16 @@ Badge numérique sur l'icône = nombre de red flags détectés.
 
 ## 🔍 Red Flags Vérifiés
 
-- Ancienneté du domaine (plus ancien = plus safe)
+- Ancienneté du domaine (plus ancien = plus safe) — via RDAP (`rdap.org`)
 - Présence des mentions légales / CGV
-- Certificat SSL (HTTPS + validité)
+- Connexion HTTPS (présence du chiffrement)
 
 Verdict global : **Site fiable** / **Quelques points à vérifier** / **Risque élevé**
+
+> Accès réseau : `host_permissions` limité à `https://rdap.org/*` (lookup
+> d'ancienneté du domaine côté Service Worker). Pas de `<all_urls>` en
+> host_permissions ; le `<all_urls>` du manifest concerne uniquement
+> `content_scripts.matches` (détection sur toutes les pages).
 
 ## 🔑 Conventions
 
