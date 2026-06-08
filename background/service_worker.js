@@ -116,16 +116,16 @@ async function handleCheckoutDetected(message, sender, sendResponse) {
       });
     }
 
-    // 6) Afficher la bannière dans le content script de l'onglet actif.
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          { type: 'SHOW_BANNER', redFlagsCount: redFlagCount, verdict: result.verdict.level },
-          () => void chrome.runtime.lastError
-        );
-      }
-    });
+    // 6) Afficher la bannière dans l'onglet qui a DÉCLENCHÉ la détection
+    //    (sender.tab.id), et non l'onglet actif — sinon une détection en
+    //    arrière-plan injecterait la bannière sur le mauvais onglet.
+    if (typeof tabId === 'number') {
+      chrome.tabs.sendMessage(
+        tabId,
+        { type: 'SHOW_BANNER', redFlagsCount: redFlagCount, verdict: result.verdict.level },
+        () => void chrome.runtime.lastError
+      );
+    }
 
     // 7) Accusé de réception au content script.
     sendResponse({ status: 'ok', redFlagCount });
@@ -146,23 +146,33 @@ async function handleGetStatus(message, sender, sendResponse) {
 
     const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    // Pas d'onglet exploitable (ex. page interne chrome://) → rien à montrer.
-    if (!activeTab || !activeTab.url) {
+    // Pas d'onglet du tout → rien à montrer.
+    if (!activeTab) {
       sendResponse({ verdict: null });
       return;
     }
 
-    // Priorité 1 : résultat scopé au tabId (fiable même après redémarrage du SW).
-    const tabResult = await getTabResult(activeTab.id);
-    if (tabResult) {
-      sendResponse(tabResult);
+    // Priorité 1 : résultat scopé au tabId. `activeTab.id` est TOUJOURS
+    // disponible (contrairement à `activeTab.url`, undefined sans la
+    // permission `tabs` quand le panel est ouvert via sidePanel.open()).
+    // C'est ce qui permet au panel de récupérer le verdict du bon onglet.
+    if (typeof activeTab.id === 'number') {
+      const tabResult = await getTabResult(activeTab.id);
+      if (tabResult) {
+        sendResponse(tabResult);
+        return;
+      }
+    }
+
+    // Priorité 2 : fallback cache hostname, uniquement si l'URL est lisible.
+    if (activeTab.url) {
+      const hostname = getHostname(activeTab.url);
+      const cached = await getCachedAnalysis(hostname);
+      sendResponse(cached || { verdict: null });
       return;
     }
 
-    // Priorité 2 : cache hostname (fallback si tabId non disponible).
-    const hostname = getHostname(activeTab.url);
-    const cached = await getCachedAnalysis(hostname);
-    sendResponse(cached || { verdict: null });
+    sendResponse({ verdict: null });
   } catch (err) {
     console.error('[PreShot] handleGetStatus error:', err);
     sendResponse({ verdict: null });
@@ -402,12 +412,23 @@ async function fetchDomainAge(hostname) {
 }
 
 // ------------------------------------------------------------
-// Reset du badge au changement d'onglet
+// Restauration du badge au changement d'onglet
 // ------------------------------------------------------------
-// Quand l'utilisateur bascule sur un autre onglet, on remet le badge à
-// un état neutre (icône verte, aucun chiffre) pour ne pas afficher le
-// verdict d'un onglet sur un autre.
-chrome.tabs.onActivated.addListener(({ tabId }) => {
-  chrome.action.setBadgeText({ tabId, text: '' });
-  chrome.action.setIcon({ tabId, path: ICONS.green });
+// Quand l'utilisateur bascule sur un onglet, on RESTAURE le verdict réel
+// déjà calculé pour cet onglet (icône + badge) au lieu de le réinitialiser
+// aveuglément en vert — sinon un site analysé "rouge" repasserait au vert
+// au simple aller-retour entre onglets.
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  try {
+    const result = await getTabResult(tabId);
+    if (result) {
+      updateBadge(tabId, result.verdict, result.redFlagCount);
+    } else {
+      // Aucun diagnostic pour cet onglet → état neutre.
+      chrome.action.setBadgeText({ tabId, text: '' });
+      chrome.action.setIcon({ tabId, path: ICONS.green });
+    }
+  } catch (err) {
+    console.warn('[PreShot] onActivated restore error:', String(err));
+  }
 });
