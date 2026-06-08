@@ -125,4 +125,17 @@ function toggleHelp(event) {
 document.getElementById('preshot-popup-diagnostic').addEventListener('click', openDiagnostic);
 document.getElementById('preshot-popup-help').addEventListener('click', toggleHelp);
 
+// Mise à jour en direct : si une analyse se termine alors que le popup est
+// ouvert, le service worker diffuse ANALYSIS_COMPLETE → on rafraîchit l'état.
+// On ne met à jour que si l'analyse concerne l'onglet actif (comparaison de
+// hostname quand il est connu), pour ne pas afficher le verdict d'un autre onglet.
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type !== 'ANALYSIS_COMPLETE' || !message.data) return;
+
+  const current = activeTab && activeTab.url ? safeHostname(activeTab.url) : '';
+  if (!current || current === message.data.hostname) {
+    renderStatus(message.data);
+  }
+});
+
 init();

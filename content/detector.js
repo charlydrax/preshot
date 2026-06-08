@@ -20,7 +20,19 @@ const PRESHOT_FIELD_SELECTOR = [
   '[autocomplete*="cc-"]'
 ].join(',');
 
-const PRESHOT_LOGO_REGEX = /visa|mastercard|paypal|stripe/i;
+// Marques de paiement reconnues.
+const PRESHOT_BRANDS = 'visa|mastercard|maestro|amex|american-express|paypal|stripe';
+
+// alt : libellé descriptif → match borné par limites de mot.
+const PRESHOT_LOGO_ALT_REGEX = new RegExp('\\b(' + PRESHOT_BRANDS + ')\\b', 'i');
+
+// src : le NOM DE FICHIER doit ÊTRE la marque (éventuellement suffixée d'un mot
+// de contexte logo/card/icon…), pour éviter qu'un produit comme
+// "stripe-dress-12.jpg" ne soit pris pour un logo Stripe.
+const PRESHOT_LOGO_FILE_REGEX = new RegExp(
+  '^(' + PRESHOT_BRANDS + ')([-_](logo|icon|card|badge|pay|payment))?(\\.\\w+)?$',
+  'i'
+);
 
 function detectUrlPattern() {
   return PRESHOT_URL_REGEX.test(location.pathname + location.search);
@@ -33,9 +45,13 @@ function detectSensitiveFields() {
 function detectPaymentLogos() {
   const imgs = document.querySelectorAll('img');
   for (const img of imgs) {
-    if (PRESHOT_LOGO_REGEX.test(img.alt) || PRESHOT_LOGO_REGEX.test(img.src)) {
-      return true;
-    }
+    // alt : libellé descriptif, signal fort.
+    if (PRESHOT_LOGO_ALT_REGEX.test(img.alt || '')) return true;
+
+    // src : on ne teste QUE le nom de fichier (dernier segment, sans query),
+    // pas l'URL entière, et il doit ÊTRE la marque (pas la contenir).
+    const file = (img.currentSrc || img.src || '').split('/').pop().split('?')[0];
+    if (PRESHOT_LOGO_FILE_REGEX.test(file)) return true;
   }
   return false;
 }
@@ -73,6 +89,12 @@ function analyzePage() {
       redFlags: analysis.redFlags,   // string[]
       verdict: analysis.verdict      // { level, label, color }
     });
+
+    // Alerte envoyée : plus rien à surveiller sur cette « page » → on coupe
+    // l'observer pour éviter le gaspillage (réactivé sur navigation SPA /
+    // re-analyse).
+    clearTimeout(preshot_debounceTimer);
+    preshot_observer.disconnect();
   }
 }
 
@@ -84,15 +106,40 @@ function preshot_onMutation() {
 }
 
 const preshot_observer = new MutationObserver(preshot_onMutation);
-preshot_observer.observe(document.body, { childList: true, subtree: true });
+
+// (Ré)active l'observation du DOM. Idempotent : on déconnecte d'abord.
+function preshot_startObserver() {
+  preshot_observer.disconnect();
+  if (document.body) {
+    preshot_observer.observe(document.body, { childList: true, subtree: true });
+  }
+}
+
+// Navigation SPA (history API) : sans rechargement, preshot_alerted resterait
+// bloqué et un checkout atteint via routing JS ne ré-alerterait jamais. On
+// surveille les changements d'URL (popstate, hashchange, et pushState via un
+// check périodique) pour réautoriser une analyse.
+let preshot_lastUrl = location.href;
+function preshot_onUrlMaybeChanged() {
+  if (location.href === preshot_lastUrl) return;
+  preshot_lastUrl = location.href;
+  preshot_alerted = false;
+  preshot_startObserver();
+  analyzePage();
+}
+window.addEventListener('popstate', preshot_onUrlMaybeChanged);
+window.addEventListener('hashchange', preshot_onUrlMaybeChanged);
+setInterval(preshot_onUrlMaybeChanged, 1000);
 
 // Re-analyse forcée depuis le side panel (bouton « Re-analyser »). Le SW a
 // déjà vidé le cache ; on lève le garde anti-doublon et on relance l'analyse.
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'RUN_ANALYSIS') {
     preshot_alerted = false;
+    preshot_startObserver();
     analyzePage();
   }
 });
 
+preshot_startObserver();
 analyzePage();
