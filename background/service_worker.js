@@ -15,9 +15,11 @@
 
 console.log('[PreShot] service_worker.js loaded');
 
-// On charge le scoring pour réutiliser checkDomainAge() et calculateVerdict()
-// côté SW (le content script en charge sa propre copie via le manifest).
+// On charge le scoring (checkDomainAge, calculateVerdict) et la whitelist
+// (isTrustedDomain) côté SW. Le content script charge sa propre copie de
+// scoring.js via le manifest.
 importScripts('/utils/scoring.js');
+importScripts('/utils/whitelist.js');
 
 // ------------------------------------------------------------
 // Constantes
@@ -80,20 +82,10 @@ async function handleCheckoutDetected(message, sender, sendResponse) {
     console.log('[PreShot] CHECKOUT_DETECTED', { hostname, signalCount: message.signalCount });
 
     // 1) Cache d'abord : si une analyse fraîche (<24h) existe, on la réutilise
-    //    (évite de refaire le lookup WHOIS). Sinon : on part des flags locaux
-    //    du content script, on y ajoute le flag réseau 'domain_recent' (RDAP),
-    //    puis on recalcule le verdict final.
+    //    (évite de refaire le lookup WHOIS). Sinon on calcule et on met en cache.
     let result = await getCachedAnalysis(hostname);
     if (!result) {
-      const redFlags = Array.isArray(message.redFlags) ? [...message.redFlags] : [];
-
-      // Lookup WHOIS/RDAP (réseau, SW only). Fail-open en cas d'échec.
-      const registrationDate = await fetchDomainAge(hostname);
-      const ageCheck = checkDomainAge(registrationDate);
-      if (ageCheck.detected) redFlags.push(ageCheck.flag);
-
-      // Verdict recalculé avec l'ensemble des flags (locaux + réseau).
-      result = { redFlags, verdict: calculateVerdict(redFlags) };
+      result = await computeAnalysis(hostname, message.redFlags);
       await setCachedAnalysis(hostname, result);
     }
 
@@ -333,9 +325,38 @@ function getHostname(url) {
   }
 }
 
-// Note : les flags LOCAUX (SSL + mentions légales) sont calculés par
-// utils/scoring.js dans le content script puis transmis via CHECKOUT_DETECTED.
-// Le flag RÉSEAU 'domain_recent' est ajouté ici, après le lookup ci-dessous.
+// ------------------------------------------------------------
+// Calcul de l'analyse (cache-miss)
+// ------------------------------------------------------------
+// Combine les flags LOCAUX (SSL + mentions légales, calculés par scoring.js
+// dans le content script) avec le flag RÉSEAU 'domain_recent' (WHOIS/RDAP),
+// puis calcule le verdict.
+//
+// Court-circuit whitelist : pour un grand site de confiance, on renvoie
+// directement un verdict "safe" sans aucun red flag (anti faux positif).
+//
+// Degraded mode : si le lookup WHOIS échoue, on conserve les flags locaux
+// et on n'interrompt jamais l'analyse.
+async function computeAnalysis(hostname, localRedFlags) {
+  if (isTrustedDomain(hostname)) {
+    console.log('[PreShot] Domaine de confiance, analyse ignorée:', hostname);
+    return { redFlags: [], verdict: calculateVerdict([]) };
+  }
+
+  const redFlags = Array.isArray(localRedFlags) ? [...localRedFlags] : [];
+
+  try {
+    // fetchDomainAge gère déjà ses erreurs (fail-open → null) ; ce try/catch
+    // est une sécurité supplémentaire pour ne jamais casser l'analyse.
+    const registrationDate = await fetchDomainAge(hostname);
+    const ageCheck = checkDomainAge(registrationDate);
+    if (ageCheck.detected) redFlags.push(ageCheck.flag);
+  } catch (err) {
+    console.warn('[PreShot] computeAnalysis: WHOIS indisponible:', String(err));
+  }
+
+  return { redFlags, verdict: calculateVerdict(redFlags) };
+}
 
 // ------------------------------------------------------------
 // WHOIS / RDAP — ancienneté du domaine
@@ -345,7 +366,7 @@ function getHostname(url) {
 // renvoient du JSON avec un tableau "events" contenant la date d'enregistrement.
 
 const RDAP_BASE = 'https://rdap.org/domain/';
-const RDAP_TIMEOUT_MS = 4000;
+const RDAP_TIMEOUT_MS = 5000;
 
 // Renvoie la Date d'enregistrement du domaine, ou null si indisponible
 // (offline, timeout, 4xx/5xx, domaine introuvable, JSON inattendu).
