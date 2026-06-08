@@ -4,8 +4,11 @@
   "version": "0.1.0",
   "description": "Détecte les sites suspects au moment du paiement",
 
-  "permissions": ["activeTab", "storage", "scripting", "sidePanel"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": ["activeTab", "storage", "sidePanel"],
+
+  "icons": {
+    "128": "icons/icon_green.png"
+  },
 
   "background": {
     "service_worker": "background/service_worker.js"
