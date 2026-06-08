@@ -7,26 +7,112 @@
   <link rel="stylesheet" href="panel.css" />
 </head>
 <body>
+  <!-- ============================================================
+       Header : marque + domaine analysé + gros badge verdict.
+       Le verdict doit être compréhensible en < 5 secondes.
+       ============================================================ -->
   <header id="preshot-panel-header">
-    <h1>PreShot</h1>
-    <p id="preshot-panel-subtitle">Diagnostic de fiabilité</p>
+    <div id="preshot-panel-brand">
+      <span id="preshot-panel-logo" aria-hidden="true">🛡️</span>
+      <span id="preshot-panel-name">PreShot</span>
+    </div>
+    <!-- Domaine injecté par panel.js (data.hostname). -->
+    <p id="preshot-panel-domain">—</p>
   </header>
 
   <main id="preshot-panel-main">
-    <section id="preshot-verdict-section">
-      <!-- verdict badge injecté par panel.js -->
+    <!-- ----------------------------------------------------------
+         Verdict global. La classe data-level (loading|safe|warning|
+         danger) est posée par panel.js et pilote la couleur.
+         ---------------------------------------------------------- -->
+    <section id="preshot-verdict-section" data-level="loading">
+      <div id="preshot-verdict-badge">
+        <span id="preshot-verdict-icon" aria-hidden="true">⏳</span>
+        <span id="preshot-verdict-label">Analyse en cours…</span>
+      </div>
     </section>
 
+    <!-- ----------------------------------------------------------
+         Red flags détectés. Les cards sont statiques et masquées
+         par défaut (attribut hidden) ; panel.js retire `hidden` sur
+         celles dont le data-flag figure dans redFlags. Si aucun flag,
+         on affiche le message rassurant.
+         ---------------------------------------------------------- -->
     <section id="preshot-flags-section">
-      <h2>Points vérifiés</h2>
+      <h2 class="preshot-section-title">Red flags détectés</h2>
+
+      <p id="preshot-flags-empty" hidden>
+        <span aria-hidden="true">✅</span> Aucun élément suspect détecté.
+      </p>
+
       <ul id="preshot-flags-list">
-        <!-- liste des red flags injectée par panel.js -->
+        <li class="preshot-flag-card" data-flag="ssl_missing" hidden>
+          <span class="preshot-flag-icon" aria-hidden="true">🔓</span>
+          <div class="preshot-flag-body">
+            <h3 class="preshot-flag-title">Connexion non sécurisée</h3>
+            <p class="preshot-flag-desc">
+              Le site n'utilise pas une connexion sécurisée (HTTPS).
+              Vos données pourraient être interceptées.
+            </p>
+          </div>
+        </li>
+
+        <li class="preshot-flag-card" data-flag="no_legal_mentions" hidden>
+          <span class="preshot-flag-icon" aria-hidden="true">📄</span>
+          <div class="preshot-flag-body">
+            <h3 class="preshot-flag-title">Mentions légales absentes</h3>
+            <p class="preshot-flag-desc">
+              Aucune mention légale ou CGV trouvée. C'est pourtant
+              obligatoire pour un site marchand en France.
+            </p>
+          </div>
+        </li>
+
+        <li class="preshot-flag-card" data-flag="domain_recent" hidden>
+          <span class="preshot-flag-icon" aria-hidden="true">🆕</span>
+          <div class="preshot-flag-body">
+            <h3 class="preshot-flag-title">Domaine récent</h3>
+            <p class="preshot-flag-desc">
+              Ce site a été créé il y a moins de 6 mois. Méfiance pour
+              un site e-commerce récent.
+            </p>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ----------------------------------------------------------
+         Conseils : 3 recommandations. panel.js pourra adapter le jeu
+         affiché au verdict ; on fournit ici un socle universel.
+         ---------------------------------------------------------- -->
+    <section id="preshot-tips-section">
+      <h2 class="preshot-section-title">Conseils</h2>
+      <ul id="preshot-tips-list">
+        <li class="preshot-tip">
+          <span class="preshot-tip-icon" aria-hidden="true">🔍</span>
+          Vérifiez l'adresse exacte du site (fautes, extension inhabituelle).
+        </li>
+        <li class="preshot-tip">
+          <span class="preshot-tip-icon" aria-hidden="true">⭐</span>
+          Cherchez des avis externes sur le vendeur avant de payer.
+        </li>
+        <li class="preshot-tip">
+          <span class="preshot-tip-icon" aria-hidden="true">💳</span>
+          Privilégiez un paiement sécurisé ; évitez virement et carte cadeau.
+        </li>
       </ul>
     </section>
   </main>
 
+  <!-- ============================================================
+       Footer : disclaimer + lien politique de confidentialité.
+       ============================================================ -->
   <footer id="preshot-panel-footer">
-    <p>PreShot v0.1.0</p>
+    <p id="preshot-disclaimer">Ce diagnostic est indicatif et non garanti.</p>
+    <!-- TODO: remplacer href par l'URL réelle avant soumission CWS. -->
+    <a id="preshot-privacy-link" href="#" target="_blank" rel="noopener noreferrer">
+      Politique de confidentialité
+    </a>
   </footer>
 
   <script src="panel.js"></script>
