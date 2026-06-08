@@ -60,11 +60,18 @@ function analyzePage() {
 
   if (signalCount >= PRESHOT_SIGNAL_THRESHOLD) {
     preshot_alerted = true;
+
+    // Le scoring tourne ici (content script) car checkLegalMentions a besoin
+    // du DOM, indisponible côté service worker. Les checks sont 100% locaux.
+    const analysis = analyzeWebsite(location.hostname, document);
+
     chrome.runtime.sendMessage({
       type: 'CHECKOUT_DETECTED',
-      url: location.hostname,
+      url: location.hostname,        // conservé : le SW lit message.url
       signals,
-      signalCount
+      signalCount,
+      redFlags: analysis.redFlags,   // string[]
+      verdict: analysis.verdict      // { level, label, color }
     });
   }
 }

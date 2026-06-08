@@ -7,10 +7,10 @@
 // barre d'outils, met le résultat en cache (24h) et tient le side
 // panel / le popup informés.
 //
-// Worker "classique" (le manifest ne déclare pas "type":"module"),
-// donc on charge un éventuel utilitaire avec importScripts('/utils/..').
-// L'analyse réelle n'est pas encore branchée : analyzeWebsite() est
-// pour l'instant un placeholder.
+// Worker "classique" (le manifest ne déclare pas "type":"module").
+// L'analyse (red flags + verdict) est calculée par utils/scoring.js dans
+// le content script puis transmise via le message CHECKOUT_DETECTED ; le
+// SW la met en cache et pilote l'icône/badge, la bannière et le side panel.
 // ============================================================
 
 console.log('[PreShot] service_worker.js loaded');
@@ -72,17 +72,20 @@ async function handleCheckoutDetected(message, sender, sendResponse) {
     console.log('[PreShot] CHECKOUT_DETECTED', { hostname, signalCount: message.signalCount });
 
     // 1) Cache d'abord : si une analyse fraîche (<24h) existe, on la réutilise.
+    //    Sinon, on prend le résultat calculé par le content script (scoring.js)
+    //    et transmis dans le message.
     let result = await getCachedAnalysis(hostname);
     if (!result) {
-      result = await analyzeWebsite(message.url);
+      result = { redFlags: message.redFlags || [], verdict: message.verdict };
       await setCachedAnalysis(hostname, result);
     }
 
-    // 2) Nombre de red flags → pilote l'icône et le badge.
+    // 2) Nombre de red flags → alimente le badge numérique.
     const redFlagCount = Array.isArray(result.redFlags) ? result.redFlags.length : 0;
 
     // 3) Mise à jour visuelle de l'icône + badge pour cet onglet.
-    updateBadge(tabId, redFlagCount);
+    //    L'icône suit verdict.level (respecte l'exception SSL = danger).
+    updateBadge(tabId, result.verdict, redFlagCount);
 
     // 4) On informe le side panel (s'il est ouvert).
     broadcastAnalysisComplete({
@@ -109,7 +112,7 @@ async function handleCheckoutDetected(message, sender, sendResponse) {
       if (tabs[0]) {
         chrome.tabs.sendMessage(
           tabs[0].id,
-          { type: 'SHOW_BANNER', redFlagsCount: redFlagCount, verdict: result.verdict },
+          { type: 'SHOW_BANNER', redFlagsCount: redFlagCount, verdict: result.verdict.level },
           () => void chrome.runtime.lastError
         );
       }
@@ -160,14 +163,14 @@ async function handleGetStatus(message, sender, sendResponse) {
 // ------------------------------------------------------------
 // Mise à jour de l'icône + badge (scopé à un onglet)
 // ------------------------------------------------------------
-function updateBadge(tabId, redFlagCount) {
+function updateBadge(tabId, verdict, redFlagCount) {
   // Sans onglet cible on ne peut pas mettre à jour proprement.
   if (typeof tabId !== 'number') return;
 
-  const level = getVerdictLevel(redFlagCount);
+  const iconKey = iconForLevel(verdict && verdict.level);
 
-  // Icône colorée selon le niveau de risque.
-  chrome.action.setIcon({ tabId, path: ICONS[level] });
+  // Icône colorée selon le niveau de risque (verdict.level).
+  chrome.action.setIcon({ tabId, path: ICONS[iconKey] });
 
   // Badge : le nombre de red flags si > 0, sinon vide.
   chrome.action.setBadgeText({
@@ -179,12 +182,11 @@ function updateBadge(tabId, redFlagCount) {
   chrome.action.setBadgeBackgroundColor({ tabId, color: BADGE_COLOR });
 }
 
-// Traduit un nombre de red flags en niveau visuel (mêmes seuils que
-// computeVerdict() dans utils/scoring.js).
-function getVerdictLevel(redFlagCount) {
-  if (redFlagCount === 0) return 'green';
-  if (redFlagCount <= 2) return 'orange';
-  return 'red';
+// Traduit le niveau de verdict de scoring.js (safe/warning/danger) en clé d'icône.
+function iconForLevel(level) {
+  if (level === 'danger') return 'red';
+  if (level === 'warning') return 'orange';
+  return 'green'; // safe (ou valeur inconnue) → vert
 }
 
 // ------------------------------------------------------------
@@ -278,15 +280,10 @@ function getHostname(url) {
   }
 }
 
-// PLACEHOLDER : analyse du site.
-// Pour l'instant renvoie toujours un résultat "safe" sans red flag.
-// À terme, déléguera aux utilitaires existants :
-//   - utils/scoring.js : computeVerdict(), checkSsl(), checkDomainAge(), checkLegalMentions()
-//   - utils/whitelist.js : isWhitelisted()
-// (chargés via importScripts('/utils/scoring.js', '/utils/whitelist.js')).
-async function analyzeWebsite(url) {
-  return { redFlags: [], verdict: 'safe' };
-}
+// Note : l'analyse réelle (red flags + verdict) est calculée par
+// utils/scoring.js dans le content script, puis transmise au SW via le
+// message CHECKOUT_DETECTED. Les futurs flags réseau (WHOIS, certificat
+// SSL) seront ajoutés ici et fusionnés au résultat du content script.
 
 // ------------------------------------------------------------
 // Reset du badge au changement d'onglet
