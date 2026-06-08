@@ -86,7 +86,7 @@ bon moment.
 
 Pour toute question relative à cette politique ou à vos données :
 
-- **E-mail :** _[à compléter — adresse de contact]_
+- **E-mail :** `__ADRESSE_EMAIL_CONTACT__` _(placeholder — à remplacer par l'adresse de contact réelle)_
 
 ## 8. Modifications
 
