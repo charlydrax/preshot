@@ -5,26 +5,136 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PreShot</title>
   <style>
+    /* Palette alignée sur le side panel (cohérence visuelle). */
+    :root {
+      --preshot-bg: #ffffff;
+      --preshot-text: #1e1b4b;
+      --preshot-text-soft: #4b5563;
+      --preshot-accent: #4f46e5;
+      --preshot-border: #e5e7eb;
+      --preshot-safe: #10b981;
+      --preshot-warning: #f59e0b;
+      --preshot-danger: #ef4444;
+      --preshot-neutral: #6b7280;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: system-ui, sans-serif;
-      width: 260px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      width: 280px;
       padding: 16px;
-      margin: 0;
+      background: var(--preshot-bg);
+      color: var(--preshot-text);
+      font-size: 14px;
+      line-height: 1.5;
     }
-    h1 {
-      font-size: 18px;
-      margin-bottom: 4px;
+
+    #preshot-popup-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 12px;
     }
-    #preshot-popup-status {
-      font-size: 13px;
-      color: #555;
+    #preshot-popup-logo { font-size: 18px; }
+
+    /* État courant : icône + label, coloré selon data-level. */
+    #preshot-popup-state {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #f9fafb;
+      border: 1px solid var(--preshot-border);
+      border-left: 4px solid var(--preshot-neutral);
+      font-weight: 600;
+    }
+    #preshot-popup-state-icon { font-size: 16px; line-height: 1; }
+
+    #preshot-popup-state[data-level="safe"]    { border-left-color: var(--preshot-safe); }
+    #preshot-popup-state[data-level="warning"] { border-left-color: var(--preshot-warning); }
+    #preshot-popup-state[data-level="danger"]  { border-left-color: var(--preshot-danger); }
+    #preshot-popup-state[data-level="safe"]    #preshot-popup-state-label { color: var(--preshot-safe); }
+    #preshot-popup-state[data-level="warning"] #preshot-popup-state-label { color: #b45309; }
+    #preshot-popup-state[data-level="danger"]  #preshot-popup-state-label { color: var(--preshot-danger); }
+
+    #preshot-popup-domain {
       margin-top: 8px;
+      font-size: 12px;
+      color: var(--preshot-text-soft);
+      word-break: break-all;
     }
+
+    #preshot-popup-diagnostic {
+      width: 100%;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 8px;
+      background: var(--preshot-accent);
+      color: #ffffff;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #preshot-popup-diagnostic:hover:not(:disabled) { background: #4338ca; }
+    #preshot-popup-diagnostic:disabled {
+      background: #e5e7eb;
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    #preshot-popup-help {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--preshot-accent);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    #preshot-popup-help:hover { text-decoration: underline; }
+
+    #preshot-popup-help-text {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--preshot-text-soft);
+    }
+    #preshot-popup-help-text ul { margin: 4px 0 0 16px; }
   </style>
 </head>
 <body>
-  <h1>PreShot</h1>
-  <p id="preshot-popup-status">Chargement…</p>
+  <div id="preshot-popup-brand">
+    <span id="preshot-popup-logo" aria-hidden="true">🛡️</span>
+    <span>PreShot</span>
+  </div>
+
+  <!-- État courant — rempli par popup.js (data-level pilote la couleur). -->
+  <div id="preshot-popup-state" data-level="neutral">
+    <span id="preshot-popup-state-icon" aria-hidden="true">✅</span>
+    <span id="preshot-popup-state-label">Aucune analyse en cours</span>
+  </div>
+
+  <p id="preshot-popup-domain" hidden></p>
+
+  <button id="preshot-popup-diagnostic" type="button" disabled>
+    Voir le diagnostic complet
+  </button>
+
+  <a id="preshot-popup-help" href="#" role="button">Comment ça marche ?</a>
+
+  <div id="preshot-popup-help-text" hidden>
+    PreShot détecte les pages de paiement et vérifie quelques signaux de fiabilité :
+    <ul>
+      <li>connexion sécurisée (HTTPS)</li>
+      <li>présence de mentions légales / CGV</li>
+      <li>ancienneté du domaine</li>
+    </ul>
+    Le diagnostic est indicatif : il crée le doute, il ne bloque jamais.
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
