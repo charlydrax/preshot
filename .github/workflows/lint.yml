@@ -1,0 +1,41 @@
+# .github/workflows/lint.yml
+# ============================================================
+# PreShot — Vérifications légères (CI)
+#
+# Sur chaque push / pull request vers main ou dev :
+#   - valide que manifest.json est un JSON correct,
+#   - s'assure qu'aucun secret (api/config.js) n'a été committé.
+# ============================================================
+
+name: Lint
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Valide la syntaxe JSON du manifest (jq est préinstallé sur le runner).
+      # `jq empty` ne produit rien si le JSON est valide, et échoue sinon.
+      - name: Valider manifest.json
+        run: |
+          jq empty manifest.json
+          echo "✅ manifest.json est un JSON valide"
+
+      # Garde-fou : api/config.js (clés API perso) ne doit jamais être versionné.
+      # On teste les fichiers SUIVIS par git (et non le simple système de fichiers).
+      - name: Vérifier l'absence de api/config.js
+        run: |
+          if git ls-files --error-unmatch api/config.js > /dev/null 2>&1; then
+            echo "::error::api/config.js a été committé par erreur (secret) !"
+            exit 1
+          fi
+          echo "✅ Aucun api/config.js versionné"

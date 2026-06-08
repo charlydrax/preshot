@@ -1,0 +1,74 @@
+# .github/workflows/release.yml
+# ============================================================
+# PreShot — Build & Release automatiques
+#
+# Au push d'un tag "v*" (ex. v0.1.0), ce workflow :
+#   1. récupère le code,
+#   2. prépare Node.js 20,
+#   3. zippe l'extension (en excluant les fichiers de dev / secrets),
+#   4. crée une GitHub Release et y attache le zip.
+# ============================================================
+
+name: Release
+
+# --- Déclencheur : uniquement sur les tags de version (v*) ---
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Droit d'écriture sur le dépôt pour que GITHUB_TOKEN puisse créer la release.
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Récupération du code au tag poussé.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2) Node.js 20 (exigé par le ticket ; utile pour d'éventuels outils).
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3) Création du zip de l'extension.
+      #    On part de la racine et on exclut tout ce qui ne doit pas finir
+      #    dans le paquet du Chrome Web Store (dev, secrets, artefacts).
+      #    Le nom utilise le tag : preshot-v0.1.0.zip
+      - name: Packager l'extension
+        run: |
+          zip -r "preshot-${{ github.ref_name }}.zip" . \
+            -x ".git/*" \
+               ".github/*" \
+               "node_modules/*" \
+               "CLAUDE.md" \
+               "PRIVACY.md" \
+               "api/config.js" \
+               "*.zip" \
+               ".DS_Store" "*/.DS_Store" \
+               "tests/*" \
+               "store-assets/*"
+
+      # 4) Corps de la release : extrait du CHANGELOG si présent, sinon défaut.
+      #    Créé APRÈS le zip pour ne pas être inclus dans l'archive.
+      - name: Préparer le corps de la release
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            cp CHANGELOG.md RELEASE_BODY.md
+          else
+            echo "Release automatique" > RELEASE_BODY.md
+          fi
+
+      # 5) Création de la GitHub Release + attachement du zip.
+      - name: Créer la release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: PreShot ${{ github.ref_name }}
+          body_path: RELEASE_BODY.md
+          files: preshot-${{ github.ref_name }}.zip
