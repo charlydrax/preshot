@@ -5,6 +5,7 @@
   "description": "Détecte les sites suspects au moment du paiement",
 
   "permissions": ["activeTab", "storage", "sidePanel"],
+  "host_permissions": ["https://rdap.org/*"],
 
   "icons": {
     "128": "icons/icon_green.png"

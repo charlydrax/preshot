@@ -15,6 +15,10 @@
 
 console.log('[PreShot] service_worker.js loaded');
 
+// On charge le scoring pour réutiliser checkDomainAge() et calculateVerdict()
+// côté SW (le content script en charge sa propre copie via le manifest).
+importScripts('/utils/scoring.js');
+
 // ------------------------------------------------------------
 // Constantes
 // ------------------------------------------------------------
@@ -71,12 +75,21 @@ async function handleCheckoutDetected(message, sender, sendResponse) {
 
     console.log('[PreShot] CHECKOUT_DETECTED', { hostname, signalCount: message.signalCount });
 
-    // 1) Cache d'abord : si une analyse fraîche (<24h) existe, on la réutilise.
-    //    Sinon, on prend le résultat calculé par le content script (scoring.js)
-    //    et transmis dans le message.
+    // 1) Cache d'abord : si une analyse fraîche (<24h) existe, on la réutilise
+    //    (évite de refaire le lookup WHOIS). Sinon : on part des flags locaux
+    //    du content script, on y ajoute le flag réseau 'domain_recent' (RDAP),
+    //    puis on recalcule le verdict final.
     let result = await getCachedAnalysis(hostname);
     if (!result) {
-      result = { redFlags: message.redFlags || [], verdict: message.verdict };
+      const redFlags = Array.isArray(message.redFlags) ? [...message.redFlags] : [];
+
+      // Lookup WHOIS/RDAP (réseau, SW only). Fail-open en cas d'échec.
+      const registrationDate = await fetchDomainAge(hostname);
+      const ageCheck = checkDomainAge(registrationDate);
+      if (ageCheck.detected) redFlags.push(ageCheck.flag);
+
+      // Verdict recalculé avec l'ensemble des flags (locaux + réseau).
+      result = { redFlags, verdict: calculateVerdict(redFlags) };
       await setCachedAnalysis(hostname, result);
     }
 
@@ -280,10 +293,52 @@ function getHostname(url) {
   }
 }
 
-// Note : l'analyse réelle (red flags + verdict) est calculée par
-// utils/scoring.js dans le content script, puis transmise au SW via le
-// message CHECKOUT_DETECTED. Les futurs flags réseau (WHOIS, certificat
-// SSL) seront ajoutés ici et fusionnés au résultat du content script.
+// Note : les flags LOCAUX (SSL + mentions légales) sont calculés par
+// utils/scoring.js dans le content script puis transmis via CHECKOUT_DETECTED.
+// Le flag RÉSEAU 'domain_recent' est ajouté ici, après le lookup ci-dessous.
+
+// ------------------------------------------------------------
+// WHOIS / RDAP — ancienneté du domaine
+// ------------------------------------------------------------
+// Endpoint RDAP bootstrap : rdap.org redirige (302) vers le serveur RDAP
+// autoritaire du registre. fetch() suit la redirection ; les serveurs RDAP
+// renvoient du JSON avec un tableau "events" contenant la date d'enregistrement.
+
+const RDAP_BASE = 'https://rdap.org/domain/';
+const RDAP_TIMEOUT_MS = 4000;
+
+// Renvoie la Date d'enregistrement du domaine, ou null si indisponible
+// (offline, timeout, 4xx/5xx, domaine introuvable, JSON inattendu).
+// Fail-open : tout échec → null → checkDomainAge ne lève pas le flag.
+async function fetchDomainAge(hostname) {
+  // AbortController : coupe la requête si le serveur RDAP traîne.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RDAP_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(RDAP_BASE + encodeURIComponent(hostname), {
+      signal: controller.signal,
+      headers: { Accept: 'application/rdap+json' }
+    });
+
+    if (!res.ok) return null; // 404 (domaine inconnu), 429, 5xx…
+
+    const data = await res.json();
+    const events = Array.isArray(data.events) ? data.events : [];
+
+    // On cherche l'évènement "registration" (création du domaine).
+    const registration = events.find((e) => e && e.eventAction === 'registration');
+    if (!registration || !registration.eventDate) return null;
+
+    return new Date(registration.eventDate);
+  } catch (err) {
+    // AbortError (timeout) ou erreur réseau : on échoue silencieusement.
+    console.warn('[PreShot] fetchDomainAge échec pour', hostname, ':', String(err));
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // ------------------------------------------------------------
 // Reset du badge au changement d'onglet

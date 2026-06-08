@@ -21,6 +21,10 @@ console.log('[PreShot] scoring.js loaded');
 // Mots-clés des liens "mentions légales" (en minuscules).
 // Comparés au textContent des <a>, insensiblement à la casse.
 // ------------------------------------------------------------
+// Seuil d'ancienneté du domaine : en dessous, on considère le domaine
+// "récent" (red flag). ~6 mois en millisecondes.
+const DOMAIN_AGE_THRESHOLD_MS = 180 * 24 * 60 * 60 * 1000;
+
 const LEGAL_KEYWORDS = [
   'mentions légales',
   'cgv',
@@ -77,6 +81,42 @@ function checkLegalMentions(doc) {
 }
 
 // ------------------------------------------------------------
+// Fonction réseau — checkDomainAge(registrationDate, now)
+// ------------------------------------------------------------
+// Évalue l'ancienneté du domaine. Un domaine très récent est un signal
+// classique d'arnaque ; un domaine ancien inspire confiance.
+//
+// IMPORTANT : la date d'enregistrement provient d'une requête WHOIS/RDAP
+// qui ne peut PAS tourner dans le content script (CORS). Le fetch est donc
+// fait côté service worker, qui passe ensuite la date à cette fonction PURE.
+//
+// Fail-open : si la date est inconnue/illisible (lookup en échec, offline,
+// 4xx/5xx…), on NE lève PAS le flag — on préfère rater une arnaque
+// qu'alerter à tort (cf. CLAUDE.md).
+//
+// @param  {Date|string|number|null} registrationDate  Date de création du domaine.
+// @param  {number} [now=Date.now()]                   Horodatage de référence (testable).
+// @return {{ flag: string, detected: boolean }}
+function checkDomainAge(registrationDate, now = Date.now()) {
+  if (!registrationDate) {
+    return { flag: 'domain_recent', detected: false };
+  }
+
+  const created =
+    registrationDate instanceof Date
+      ? registrationDate.getTime()
+      : new Date(registrationDate).getTime();
+
+  // Date non parsable → fail-open.
+  if (Number.isNaN(created)) {
+    return { flag: 'domain_recent', detected: false };
+  }
+
+  const ageMs = now - created;
+  return { flag: 'domain_recent', detected: ageMs < DOMAIN_AGE_THRESHOLD_MS };
+}
+
+// ------------------------------------------------------------
 // Fonction 3 — calculateVerdict(redFlags)
 // ------------------------------------------------------------
 // Traduit la liste des red flags levés en verdict lisible.
@@ -111,8 +151,10 @@ function calculateVerdict(redFlags) {
 // ------------------------------------------------------------
 // Fonction principale — analyzeWebsite(hostname, document)
 // ------------------------------------------------------------
-// Orchestre les vérifications, agrège les red flags levés et calcule
-// le verdict global.
+// Orchestre les vérifications LOCALES (SSL + mentions légales), agrège les
+// red flags levés et calcule un verdict provisoire. Le flag réseau
+// 'domain_recent' (checkDomainAge) est ajouté ensuite par le service worker
+// après le lookup WHOIS/RDAP, qui recalcule alors le verdict final.
 //
 // Le schéma (http/https) n'est pas porté par le hostname seul : on le
 // récupère depuis le DOM (document.URL) avec repli sur le hostname.
@@ -150,5 +192,5 @@ function analyzeWebsite(hostname, doc) {
 // les fonctions ci-dessus sont déjà globales : ce bloc est ignoré.
 // ------------------------------------------------------------
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { checkSSL, checkLegalMentions, calculateVerdict, analyzeWebsite };
+  module.exports = { checkSSL, checkLegalMentions, checkDomainAge, calculateVerdict, analyzeWebsite };
 }
