@@ -382,12 +382,17 @@ const RDAP_TIMEOUT_MS = 5000;
 // (offline, timeout, 4xx/5xx, domaine introuvable, JSON inattendu).
 // Fail-open : tout échec → null → checkDomainAge ne lève pas le flag.
 async function fetchDomainAge(hostname) {
+  // RDAP attend le domaine ENREGISTRABLE (eTLD+1), pas un sous-domaine :
+  // "checkout.boutique.com" → "boutique.com", sinon 404 et flag jamais levé.
+  const domain = getRegistrableDomain(hostname);
+  if (!domain) return null;
+
   // AbortController : coupe la requête si le serveur RDAP traîne.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), RDAP_TIMEOUT_MS);
 
   try {
-    const res = await fetch(RDAP_BASE + encodeURIComponent(hostname), {
+    const res = await fetch(RDAP_BASE + encodeURIComponent(domain), {
       signal: controller.signal,
       headers: { Accept: 'application/rdap+json' }
     });
