@@ -177,6 +177,12 @@ body {
   border-left: 4px solid var(--preshot-danger);
 }
 
+/* L'attribut `hidden` (posé par renderFlags) doit l'emporter sur le display:flex
+   ci-dessus, sinon toutes les cartes restent visibles en permanence. */
+.preshot-flag-card[hidden] {
+  display: none;
+}
+
 .preshot-flag-icon {
   font-size: 20px;
   line-height: 1.2;

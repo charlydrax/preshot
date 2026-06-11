@@ -31,12 +31,10 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 // Couleur de fond du badge (rouge) — appliquée dès qu'un chiffre s'affiche.
 const BADGE_COLOR = '#dc2626';
 
-// Chemins des icônes (relatifs à la racine de l'extension), un par niveau de risque.
-const ICONS = {
-  green: 'icons/icon_green.png',   // 0 red flag        → site fiable
-  orange: 'icons/icon_orange.png', // 1-2 red flags     → à vérifier
-  red: 'icons/icon_red.png'        // 3+ red flags       → risque élevé
-};
+// L'icône de la barre d'outils est FIXE (icon_normal_v5, déclarée dans le
+// manifest). On ne la change plus selon le niveau de risque : le badge
+// numérique rouge suffit à signaler les red flags. Cela évite aussi l'appel
+// chrome.action.setIcon() qui échouait par moments ("Failed to fetch").
 
 // ------------------------------------------------------------
 // Listener principal des messages inter-composants
@@ -92,9 +90,8 @@ async function handleCheckoutDetected(message, sender, sendResponse) {
     // 2) Nombre de red flags → alimente le badge numérique.
     const redFlagCount = Array.isArray(result.redFlags) ? result.redFlags.length : 0;
 
-    // 3) Mise à jour visuelle de l'icône + badge pour cet onglet.
-    //    L'icône suit verdict.level (respecte l'exception SSL = danger).
-    updateBadge(tabId, result.verdict, redFlagCount);
+    // 3) Mise à jour du badge numérique pour cet onglet (icône fixe).
+    updateBadge(tabId, redFlagCount);
 
     // 4) On informe le side panel (s'il est ouvert).
     broadcastAnalysisComplete({
@@ -180,16 +177,13 @@ async function handleGetStatus(message, sender, sendResponse) {
 }
 
 // ------------------------------------------------------------
-// Mise à jour de l'icône + badge (scopé à un onglet)
+// Mise à jour du badge (scopé à un onglet)
 // ------------------------------------------------------------
-function updateBadge(tabId, verdict, redFlagCount) {
+// L'icône reste fixe (cf. note en haut du fichier) ; on ne pilote que le
+// badge numérique = nombre de red flags détectés sur cet onglet.
+function updateBadge(tabId, redFlagCount) {
   // Sans onglet cible on ne peut pas mettre à jour proprement.
   if (typeof tabId !== 'number') return;
-
-  const iconKey = iconForLevel(verdict && verdict.level);
-
-  // Icône colorée selon le niveau de risque (verdict.level).
-  chrome.action.setIcon({ tabId, path: ICONS[iconKey] });
 
   // Badge : le nombre de red flags si > 0, sinon vide.
   chrome.action.setBadgeText({
@@ -199,13 +193,6 @@ function updateBadge(tabId, verdict, redFlagCount) {
 
   // Fond de badge en rouge.
   chrome.action.setBadgeBackgroundColor({ tabId, color: BADGE_COLOR });
-}
-
-// Traduit le niveau de verdict de scoring.js (safe/warning/danger) en clé d'icône.
-function iconForLevel(level) {
-  if (level === 'danger') return 'red';
-  if (level === 'warning') return 'orange';
-  return 'green'; // safe (ou valeur inconnue) → vert
 }
 
 // ------------------------------------------------------------
@@ -419,19 +406,18 @@ async function fetchDomainAge(hostname) {
 // ------------------------------------------------------------
 // Restauration du badge au changement d'onglet
 // ------------------------------------------------------------
-// Quand l'utilisateur bascule sur un onglet, on RESTAURE le verdict réel
-// déjà calculé pour cet onglet (icône + badge) au lieu de le réinitialiser
-// aveuglément en vert — sinon un site analysé "rouge" repasserait au vert
-// au simple aller-retour entre onglets.
+// Quand l'utilisateur bascule sur un onglet, on RESTAURE le nombre de red
+// flags déjà calculé pour cet onglet au lieu de le réinitialiser aveuglément
+// — sinon un site analysé "à risque" perdrait son badge au simple aller-retour
+// entre onglets.
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   try {
     const result = await getTabResult(tabId);
     if (result) {
-      updateBadge(tabId, result.verdict, result.redFlagCount);
+      updateBadge(tabId, result.redFlagCount);
     } else {
-      // Aucun diagnostic pour cet onglet → état neutre.
+      // Aucun diagnostic pour cet onglet → badge vide.
       chrome.action.setBadgeText({ tabId, text: '' });
-      chrome.action.setIcon({ tabId, path: ICONS.green });
     }
   } catch (err) {
     console.warn('[PreShot] onActivated restore error:', String(err));
