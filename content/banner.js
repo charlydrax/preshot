@@ -87,6 +87,50 @@ function preshot_injectStyles() {
     }
 
     #preshot-banner-cta:hover { background: #374151; }
+
+    /* Pastille d'alerte : petit bloc rouge "!" fixé en haut à droite de la
+       page (au plus près de la barre d'outils du navigateur), persistante
+       tant qu'un élément cloche sur le site. */
+    #preshot-alert-badge {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 2147483647;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: #EF4444;
+      color: #ffffff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      box-sizing: border-box;
+      box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45), 0 1px 4px rgba(0, 0, 0, 0.15);
+      animation: preshot-alert-pop 0.3s ease both,
+                 preshot-alert-pulse 2s ease-in-out 1.5s infinite;
+    }
+
+    #preshot-alert-badge:hover { background: #dc2626; }
+
+    @keyframes preshot-alert-pop {
+      from { opacity: 0; transform: scale(0.6); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes preshot-alert-pulse {
+      0%, 100% { box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45), 0 1px 4px rgba(0, 0, 0, 0.15); }
+      50%      { box-shadow: 0 4px 22px rgba(239, 68, 68, 0.8), 0 1px 6px rgba(0, 0, 0, 0.2); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #preshot-alert-badge { animation: preshot-alert-pop 0.3s ease both; }
+    }
   `;
 
   document.head.appendChild(style);
@@ -171,6 +215,53 @@ function preshot_injectBanner(redFlagsCount, verdict) {
 }
 
 // ----------------------------------------------------------------
+// Pastille d'alerte (haut à droite)
+// ----------------------------------------------------------------
+
+function preshot_removeAlertBadge() {
+  const badge = document.getElementById('preshot-alert-badge');
+  if (badge) badge.remove();
+}
+
+function preshot_injectAlertBadge(redFlagsCount, verdict) {
+  // Aucun problème détecté → pas de pastille (et on retire une éventuelle
+  // ancienne, ex. après une re-analyse qui repasse le site au vert).
+  if (verdict === 'safe' || !redFlagsCount) {
+    preshot_removeAlertBadge();
+    return;
+  }
+
+  // Déjà présente → ne pas dupliquer.
+  if (document.getElementById('preshot-alert-badge')) return;
+
+  preshot_injectStyles();
+
+  const plural = redFlagsCount > 1 ? 's' : '';
+  const label = `PreShot : ${redFlagsCount} élément${plural} à vérifier sur ce site`;
+
+  const badge = document.createElement('div');
+  badge.id = 'preshot-alert-badge';
+  badge.textContent = '!';
+  badge.setAttribute('role', 'button');
+  badge.setAttribute('tabindex', '0');
+  badge.setAttribute('aria-label', label);
+  badge.title = `${label} — cliquez pour le diagnostic`;
+
+  // Clic / clavier → ouverture du side panel (comme le CTA de la bannière).
+  const openDiagnostic = () => chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL' });
+  badge.addEventListener('click', openDiagnostic);
+  badge.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openDiagnostic();
+    }
+  });
+
+  document.body.appendChild(badge);
+  console.log('[PreShot] alert badge injected — redFlags:', redFlagsCount);
+}
+
+// ----------------------------------------------------------------
 // Listener de messages depuis le service worker
 // ----------------------------------------------------------------
 
@@ -178,5 +269,6 @@ chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'SHOW_BANNER') {
     const { redFlagsCount, verdict } = message;
     preshot_injectBanner(redFlagsCount, verdict);
+    preshot_injectAlertBadge(redFlagsCount, verdict);
   }
 });
