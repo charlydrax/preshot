@@ -8,35 +8,31 @@
 </head>
 <body>
   <!-- ============================================================
-       Header : marque + domaine analysé + gros badge verdict.
-       Le verdict doit être compréhensible en < 5 secondes.
+       Header : titre "Diagnostic rapide" + domaine analysé.
+       panel.js injecte le bouton « Re-analyser » dans ce header.
        ============================================================ -->
   <header id="preshot-panel-header">
-    <div id="preshot-panel-brand">
-      <span id="preshot-panel-logo" aria-hidden="true">🛡️</span>
-      <span id="preshot-panel-name">PreShot</span>
-    </div>
+    <h1 id="preshot-panel-title">Diagnostic rapide</h1>
     <!-- Domaine injecté par panel.js (data.hostname). -->
     <p id="preshot-panel-domain">—</p>
   </header>
 
   <main id="preshot-panel-main">
     <!-- ----------------------------------------------------------
-         Verdict global. La classe data-level (loading|safe|warning|
-         danger) est posée par panel.js et pilote la couleur.
+         Encart d'alerte. data-level (loading|safe|warning|danger)
+         est posé par panel.js et pilote la couleur de l'encart.
          ---------------------------------------------------------- -->
-    <section id="preshot-verdict-section" data-level="loading">
-      <div id="preshot-verdict-badge">
-        <span id="preshot-verdict-icon" aria-hidden="true">⏳</span>
-        <span id="preshot-verdict-label">Analyse en cours…</span>
+    <section id="preshot-alert-section">
+      <div id="preshot-alert-box" data-level="loading">
+        <p id="preshot-alert-title">Analyse en cours…</p>
+        <p id="preshot-alert-text"></p>
       </div>
     </section>
 
     <!-- ----------------------------------------------------------
          Red flags détectés. Les cards sont statiques et masquées
          par défaut (attribut hidden) ; panel.js retire `hidden` sur
-         celles dont le data-flag figure dans redFlags. Si aucun flag,
-         on affiche le message rassurant.
+         celles dont le data-flag figure dans redFlags.
          ---------------------------------------------------------- -->
     <section id="preshot-flags-section">
       <h2 class="preshot-section-title">Red flags détectés</h2>
@@ -47,7 +43,7 @@
 
       <ul id="preshot-flags-list">
         <li class="preshot-flag-card" data-flag="ssl_missing" hidden>
-          <span class="preshot-flag-icon" aria-hidden="true">🔓</span>
+          <span class="preshot-flag-icon" aria-hidden="true">!</span>
           <div class="preshot-flag-body">
             <h3 class="preshot-flag-title">Connexion non sécurisée</h3>
             <p class="preshot-flag-desc">
@@ -58,18 +54,18 @@
         </li>
 
         <li class="preshot-flag-card" data-flag="no_legal_mentions" hidden>
-          <span class="preshot-flag-icon" aria-hidden="true">📄</span>
+          <span class="preshot-flag-icon" aria-hidden="true">!</span>
           <div class="preshot-flag-body">
             <h3 class="preshot-flag-title">Mentions légales absentes</h3>
             <p class="preshot-flag-desc">
-              Aucune mention légale ou CGV trouvée. C'est pourtant
+              Aucune page légale ou CGV détectée. C'est pourtant
               obligatoire pour un site marchand en France.
             </p>
           </div>
         </li>
 
         <li class="preshot-flag-card" data-flag="domain_recent" hidden>
-          <span class="preshot-flag-icon" aria-hidden="true">🆕</span>
+          <span class="preshot-flag-icon" aria-hidden="true">!</span>
           <div class="preshot-flag-body">
             <h3 class="preshot-flag-title">Domaine récent</h3>
             <p class="preshot-flag-desc">
@@ -82,8 +78,7 @@
     </section>
 
     <!-- ----------------------------------------------------------
-         Conseils : 3 recommandations. panel.js pourra adapter le jeu
-         affiché au verdict ; on fournit ici un socle universel.
+         Conseils : 3 recommandations adaptées au verdict par panel.js.
          ---------------------------------------------------------- -->
     <section id="preshot-tips-section">
       <h2 class="preshot-section-title">Conseils</h2>

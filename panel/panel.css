@@ -1,22 +1,27 @@
 /* ============================================================
-   panel/panel.css — PreShot Side Panel
-   Palette : fond #FFFFFF · texte #1E1B4B · accent #4F46E5
-   Verdicts : vert #10B981 · orange #F59E0B · rouge #EF4444
+   panel/panel.css — PreShot Side Panel (thème sombre)
+   Aligné sur la maquette Figma "Diagnostic rapide" :
+   fond #0d1220 · texte blanc · pastille rouge "!" · coins arrondis.
    Largeur cible : ~360px (side panel Chrome).
    ============================================================ */
 
 :root {
-  --preshot-bg: #ffffff;
-  --preshot-text: #1e1b4b;
-  --preshot-text-soft: #4b5563;
-  --preshot-accent: #4f46e5;
-  --preshot-card-bg: #f9fafb;
-  --preshot-border: #e5e7eb;
+  --preshot-bg: #0d1220;
+  --preshot-text: #ffffff;
+  --preshot-text-soft: rgba(255, 255, 255, 0.7);
+
+  --preshot-card-bg: rgba(249, 250, 251, 0.15);
+  --preshot-card-border: rgba(236, 239, 243, 0.6);
+
+  --preshot-pill-bg: #fee2e2;
+  --preshot-pill-text: #dc2626;
 
   --preshot-safe: #10b981;
   --preshot-warning: #f59e0b;
   --preshot-danger: #ef4444;
   --preshot-loading: #9ca3af;
+
+  --preshot-accent: #818cf8;
 }
 
 * {
@@ -26,7 +31,7 @@
 }
 
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   background: var(--preshot-bg);
@@ -44,16 +49,16 @@ body {
 }
 
 #preshot-panel-header,
-#preshot-verdict-section,
+#preshot-alert-section,
 #preshot-flags-section,
 #preshot-tips-section,
 #preshot-panel-footer {
   animation: preshot-fade-in 0.35s ease both;
 }
-#preshot-verdict-section { animation-delay: 0.05s; }
-#preshot-flags-section   { animation-delay: 0.10s; }
-#preshot-tips-section    { animation-delay: 0.15s; }
-#preshot-panel-footer    { animation-delay: 0.20s; }
+#preshot-alert-section { animation-delay: 0.05s; }
+#preshot-flags-section { animation-delay: 0.10s; }
+#preshot-tips-section  { animation-delay: 0.15s; }
+#preshot-panel-footer  { animation-delay: 0.20s; }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; }
@@ -63,20 +68,14 @@ body {
    Header
    ------------------------------------------------------------ */
 #preshot-panel-header {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
-#preshot-panel-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 17px;
+#preshot-panel-title {
+  font-size: 20px;
   font-weight: 700;
   color: var(--preshot-text);
-}
-
-#preshot-panel-logo {
-  font-size: 20px;
+  letter-spacing: -0.01em;
 }
 
 #preshot-panel-domain {
@@ -86,60 +85,73 @@ body {
   word-break: break-all;
 }
 
+/* Bouton « ↻ Re-analyser » injecté par panel.js. */
+#preshot-reanalyze {
+  margin-top: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--preshot-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+#preshot-reanalyze:hover { background: rgba(255, 255, 255, 0.14); }
+
 /* ------------------------------------------------------------
-   Verdict global — gros badge coloré, lisible en < 5 s.
-   La couleur dépend de l'attribut data-level posé par panel.js.
+   Encart d'alerte — reproduit le bloc "X anomalies détectées".
+   La couleur dépend de data-level posé par panel.js.
    ------------------------------------------------------------ */
-#preshot-verdict-section {
+#preshot-alert-section {
   margin-bottom: 22px;
 }
 
-#preshot-verdict-badge {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid var(--preshot-border);
-  border-left-width: 6px;
-  background: var(--preshot-card-bg);
+#preshot-alert-box {
+  padding: 15px 15px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: #fff7ed;
 }
 
-#preshot-verdict-icon {
-  font-size: 28px;
-  line-height: 1;
-}
-
-#preshot-verdict-label {
-  font-size: 17px;
+#preshot-alert-title {
+  font-size: 18px;
   font-weight: 700;
-}
-
-/* Déclinaisons par niveau : bordure gauche + couleur du label/fond. */
-#preshot-verdict-section[data-level="loading"] #preshot-verdict-badge {
-  border-left-color: var(--preshot-loading);
-}
-#preshot-verdict-section[data-level="safe"] #preshot-verdict-badge {
-  border-left-color: var(--preshot-safe);
-  background: #ecfdf5;
-}
-#preshot-verdict-section[data-level="safe"] #preshot-verdict-label {
-  color: var(--preshot-safe);
-}
-#preshot-verdict-section[data-level="warning"] #preshot-verdict-badge {
-  border-left-color: var(--preshot-warning);
-  background: #fffbeb;
-}
-#preshot-verdict-section[data-level="warning"] #preshot-verdict-label {
-  color: #b45309;
-}
-#preshot-verdict-section[data-level="danger"] #preshot-verdict-badge {
-  border-left-color: var(--preshot-danger);
-  background: #fef2f2;
-}
-#preshot-verdict-section[data-level="danger"] #preshot-verdict-label {
   color: var(--preshot-danger);
 }
+
+#preshot-alert-text {
+  margin-top: 8px;
+  font-size: 15px;
+  color: #111827;
+  line-height: 1.45;
+}
+#preshot-alert-text:empty { display: none; }
+
+/* Variantes par niveau. */
+#preshot-alert-box[data-level="loading"] {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+#preshot-alert-box[data-level="loading"] #preshot-alert-title { color: var(--preshot-text); }
+#preshot-alert-box[data-level="loading"] #preshot-alert-text  { color: var(--preshot-text-soft); }
+
+#preshot-alert-box[data-level="safe"] {
+  background: #ecfdf5;
+}
+#preshot-alert-box[data-level="safe"] #preshot-alert-title { color: #059669; }
+
+#preshot-alert-box[data-level="warning"] {
+  background: #fffbeb;
+}
+#preshot-alert-box[data-level="warning"] #preshot-alert-title { color: #b45309; }
+
+#preshot-alert-box[data-level="danger"] {
+  background: #fff7ed;
+}
+#preshot-alert-box[data-level="danger"] #preshot-alert-title { color: #dc2626; }
 
 /* ------------------------------------------------------------
    Titres de section
@@ -149,12 +161,12 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--preshot-accent);
+  color: var(--preshot-text-soft);
   margin-bottom: 10px;
 }
 
 /* ------------------------------------------------------------
-   Red flags — cards
+   Red flags — cards (style Figma)
    ------------------------------------------------------------ */
 #preshot-flags-section {
   margin-bottom: 22px;
@@ -164,50 +176,68 @@ body {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
 
 .preshot-flag-card {
   display: flex;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 12px;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 13px;
+  border-radius: 18px;
   background: var(--preshot-card-bg);
-  border: 1px solid var(--preshot-border);
-  border-left: 4px solid var(--preshot-danger);
+  border: 1px solid var(--preshot-card-border);
 }
 
-/* L'attribut `hidden` (posé par renderFlags) doit l'emporter sur le display:flex
-   ci-dessus, sinon toutes les cartes restent visibles en permanence. */
+/* L'attribut `hidden` doit l'emporter sur le display:flex ci-dessus,
+   sinon toutes les cartes restent visibles en permanence. */
 .preshot-flag-card[hidden] {
   display: none;
 }
 
 .preshot-flag-icon {
-  font-size: 20px;
-  line-height: 1.2;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 12px;
+  background: var(--preshot-pill-bg);
+  color: var(--preshot-pill-text);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .preshot-flag-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
+  color: var(--preshot-text);
   margin-bottom: 2px;
 }
 
 .preshot-flag-desc {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--preshot-text-soft);
+  line-height: 1.45;
 }
 
-/* Message rassurant quand aucun red flag. */
+/* Message rassurant quand aucun red flag (rarement utilisé : l'encart vert
+   le signale déjà). */
 #preshot-flags-empty {
-  padding: 16px;
-  border-radius: 12px;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #047857;
+  padding: 13px;
+  border-radius: 18px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
   font-weight: 600;
+}
+
+/* Mode « Diagnostic partiel » : panel.js injecte des <li> simples. */
+.preshot-dynamic {
+  font-size: 13px;
+  color: var(--preshot-text-soft);
 }
 
 /* ------------------------------------------------------------
@@ -240,7 +270,7 @@ body {
    Footer
    ------------------------------------------------------------ */
 #preshot-panel-footer {
-  border-top: 1px solid var(--preshot-border);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 14px;
 }
 

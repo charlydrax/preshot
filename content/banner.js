@@ -2,7 +2,7 @@
 console.log('[PreShot] banner.js loaded');
 
 // ----------------------------------------------------------------
-// Styles
+// Styles (thème sombre, maquette Figma)
 // ----------------------------------------------------------------
 
 function preshot_injectStyles() {
@@ -16,16 +16,15 @@ function preshot_injectStyles() {
       bottom: 20px;
       right: 20px;
       z-index: 999999;
-      width: 320px;
-      padding: 16px;
-      border-radius: 12px;
-      background: #ffffff;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
-      border-left: 4px solid #10B981;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      font-size: 14px;
-      color: #1f2937;
-      transform: translateX(360px);
+      width: 360px;
+      padding: 21px;
+      border-radius: 20px;
+      background: #0d1220;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 12px 15px rgba(0, 0, 0, 0.15), 0 4px 24px rgba(0, 0, 0, 0.35);
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #ffffff;
+      transform: translateX(400px);
       transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
       box-sizing: border-box;
     }
@@ -34,59 +33,75 @@ function preshot_injectStyles() {
       transform: translateX(0);
     }
 
-    #preshot-banner[data-verdict="safe"]    { border-left-color: #10B981; }
-    #preshot-banner[data-verdict="warning"] { border-left-color: #F59E0B; }
-    #preshot-banner[data-verdict="danger"]  { border-left-color: #EF4444; }
-
     #preshot-banner-header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 12px;
       margin-bottom: 8px;
+      padding-right: 20px;
     }
 
-    #preshot-banner-title {
+    #preshot-banner-icon {
+      flex-shrink: 0;
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 18px;
+      background: #dc2626;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    #preshot-banner[data-verdict="warning"] #preshot-banner-icon { background: #f59e0b; }
+    #preshot-banner[data-verdict="safe"]    #preshot-banner-icon { background: #10b981; }
+
+    #preshot-banner-title {
       font-weight: 700;
-      font-size: 15px;
-      color: #111827;
+      font-size: 16px;
+      line-height: 1.25;
+      color: #ffffff;
     }
 
     #preshot-banner-close {
+      position: absolute;
+      top: 14px;
+      right: 16px;
       background: none;
       border: none;
       cursor: pointer;
       font-size: 16px;
-      color: #9ca3af;
+      color: rgba(255, 255, 255, 0.5);
       padding: 0;
       line-height: 1;
-      flex-shrink: 0;
     }
-
-    #preshot-banner-close:hover { color: #374151; }
+    #preshot-banner-close:hover { color: #ffffff; }
 
     #preshot-banner-message {
-      margin: 0 0 12px 0;
-      color: #374151;
-      line-height: 1.45;
+      margin: 0 0 14px 0;
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 14px;
+      line-height: 21px;
     }
 
     #preshot-banner-cta {
       display: inline-block;
-      padding: 8px 14px;
-      border-radius: 8px;
-      background: #1f2937;
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.12);
       color: #ffffff;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
-      border: none;
+      border: 1px solid rgba(255, 255, 255, 0.18);
       cursor: pointer;
       font-family: inherit;
+      transition: background 0.15s ease;
     }
-
-    #preshot-banner-cta:hover { background: #374151; }
+    #preshot-banner-cta:hover { background: rgba(255, 255, 255, 0.2); }
 
     /* Pastille d'alerte : petit bloc rouge "!" fixé en haut à droite de la
        page (au plus près de la barre d'outils du navigateur), persistante
@@ -102,21 +117,21 @@ function preshot_injectStyles() {
       align-items: center;
       justify-content: center;
       border-radius: 10px;
-      background: #EF4444;
+      background: #dc2626;
       color: #ffffff;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       font-size: 22px;
       font-weight: 800;
       line-height: 1;
       cursor: pointer;
       user-select: none;
       box-sizing: border-box;
-      box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45), 0 1px 4px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45), 0 1px 4px rgba(0, 0, 0, 0.15);
       animation: preshot-alert-pop 0.3s ease both,
                  preshot-alert-pulse 2s ease-in-out 1.5s infinite;
     }
 
-    #preshot-alert-badge:hover { background: #dc2626; }
+    #preshot-alert-badge:hover { background: #b91c1c; }
 
     @keyframes preshot-alert-pop {
       from { opacity: 0; transform: scale(0.6); }
@@ -124,12 +139,13 @@ function preshot_injectStyles() {
     }
 
     @keyframes preshot-alert-pulse {
-      0%, 100% { box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45), 0 1px 4px rgba(0, 0, 0, 0.15); }
-      50%      { box-shadow: 0 4px 22px rgba(239, 68, 68, 0.8), 0 1px 6px rgba(0, 0, 0, 0.2); }
+      0%, 100% { box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45), 0 1px 4px rgba(0, 0, 0, 0.15); }
+      50%      { box-shadow: 0 4px 22px rgba(220, 38, 38, 0.8), 0 1px 6px rgba(0, 0, 0, 0.2); }
     }
 
     @media (prefers-reduced-motion: reduce) {
       #preshot-alert-badge { animation: preshot-alert-pop 0.3s ease both; }
+      #preshot-banner { transition: none; }
     }
   `;
 
@@ -137,15 +153,22 @@ function preshot_injectStyles() {
 }
 
 // ----------------------------------------------------------------
-// Helpers
+// Helpers — copie de la bannière selon le verdict
 // ----------------------------------------------------------------
 
-function preshot_buildMessage(redFlagsCount, verdict) {
+function preshot_bannerCopy(redFlagsCount, verdict) {
   if (verdict === 'safe' || redFlagsCount === 0) {
-    return 'Aucun problème détecté sur ce site.';
+    return {
+      icon: '✓',
+      title: 'Aucun élément suspect détecté',
+      text: 'Ce site ne présente pas de signal inhabituel. Restez tout de même vigilant avant de payer.'
+    };
   }
-  const plural = redFlagsCount > 1 ? 's' : '';
-  return `${redFlagsCount} élément${plural} à vérifier avant de payer`;
+  return {
+    icon: '!',
+    title: 'PreShot a détecté des éléments à vérifier',
+    text: 'Ce site présente plusieurs signaux inhabituels avant paiement. Vérifiez les informations avant de poursuivre.'
+  };
 }
 
 // ----------------------------------------------------------------
@@ -174,26 +197,26 @@ function preshot_injectBanner(redFlagsCount, verdict) {
 
   preshot_injectStyles();
 
+  const copy = preshot_bannerCopy(redFlagsCount, verdict);
+
   const banner = document.createElement('div');
   banner.id = 'preshot-banner';
   banner.setAttribute('data-verdict', verdict);
 
   banner.innerHTML = `
+    <button id="preshot-banner-close" aria-label="Fermer la notification">✕</button>
     <div id="preshot-banner-header">
-      <div id="preshot-banner-title">
-        <span>🛡️</span>
-        <span>PreShot</span>
-      </div>
-      <button id="preshot-banner-close" aria-label="Fermer la notification">✕</button>
+      <div id="preshot-banner-icon" aria-hidden="true">${copy.icon}</div>
+      <div id="preshot-banner-title">${copy.title}</div>
     </div>
-    <p id="preshot-banner-message">${preshot_buildMessage(redFlagsCount, verdict)}</p>
+    <p id="preshot-banner-message">${copy.text}</p>
     <button id="preshot-banner-cta">Voir le diagnostic</button>
   `;
 
   document.body.appendChild(banner);
 
   // Double rAF : garantit que le navigateur a peint l'état initial
-  // (translateX(360px)) avant de déclencher la transition vers (0).
+  // (translateX) avant de déclencher la transition vers (0).
   requestAnimationFrame(() => {
     requestAnimationFrame(() => banner.classList.add('preshot-visible'));
   });

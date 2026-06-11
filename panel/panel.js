@@ -1,11 +1,11 @@
 // panel/panel.js
 // ============================================================
-// PreShot — Logique du Side Panel
+// PreShot — Logique du Side Panel (thème sombre, maquette Figma)
 //
 // Affiche le diagnostic de fiabilité du site analysé. Manipulation DOM
-// directe (pas de framework). S'appuie sur le HTML du ticket 7 :
-//   #preshot-panel-domain, #preshot-verdict-section (+ data-level),
-//   #preshot-verdict-icon/-label, #preshot-flags-list (cards data-flag),
+// directe (pas de framework). S'appuie sur le HTML :
+//   #preshot-panel-domain, #preshot-alert-box (+ data-level),
+//   #preshot-alert-title/-text, #preshot-flags-list (cards data-flag),
 //   #preshot-flags-empty, #preshot-tips-list.
 //
 // Contrats de messages (cf. service_worker.js) :
@@ -24,12 +24,11 @@ console.log('[PreShot] panel.js loaded');
 // Vraies clés émises par le code (PAS domain_age_recent).
 const FLAG_KEYS = ['ssl_missing', 'no_legal_mentions', 'domain_recent'];
 
-// Icône du badge verdict par niveau.
-const VERDICT_ICONS = {
-  loading: '⏳',
-  safe: '✅',
-  warning: '⚠️',
-  danger: '🔴'
+// Phrase de conseil de l'encart d'alerte, selon le niveau de verdict.
+const ALERT_ADVICE = {
+  safe: 'Aucun signal suspect détecté. Restez tout de même vigilant avant de payer.',
+  warning: 'Nous vous conseillons de vérifier la fiabilité du site avant de finaliser votre achat.',
+  danger: 'Nous vous conseillons de vérifier la fiabilité du site avant de finaliser votre achat.'
 };
 
 // Conseils adaptés au verdict (3 par niveau).
@@ -75,13 +74,19 @@ function setDomain(hostname) {
   document.getElementById('preshot-panel-domain').textContent = hostname || '—';
 }
 
-// Pose le verdict : couleur via data-level (piloté par le CSS), icône + label.
-function setVerdict(level, label, iconOverride) {
-  const section = document.getElementById('preshot-verdict-section');
-  section.dataset.level = level;
-  document.getElementById('preshot-verdict-icon').textContent =
-    iconOverride || VERDICT_ICONS[level] || VERDICT_ICONS.loading;
-  document.getElementById('preshot-verdict-label').textContent = label;
+// Titre « X anomalie(s) détectée(s) » selon le nombre de red flags.
+function anomaliesTitle(count) {
+  if (count <= 0) return 'Aucune anomalie détectée';
+  return count > 1 ? `${count} anomalies détectées` : '1 anomalie détectée';
+}
+
+// Pose l'encart d'alerte : couleur via data-level (piloté par le CSS),
+// titre + texte de conseil.
+function setAlert(level, title, text) {
+  const box = document.getElementById('preshot-alert-box');
+  box.dataset.level = level;
+  document.getElementById('preshot-alert-title').textContent = title;
+  document.getElementById('preshot-alert-text').textContent = text || '';
 }
 
 // Retire les éléments injectés dynamiquement dans la liste des flags.
@@ -135,7 +140,7 @@ function renderTips(level) {
 // ------------------------------------------------------------
 
 function showLoading() {
-  setVerdict('loading', 'Analyse en cours…');
+  setAlert('loading', 'Analyse en cours…', '');
   hideAllFlags();
   clearDynamicItems();
   setSectionVisible('preshot-flags-section', false);
@@ -144,7 +149,7 @@ function showLoading() {
 
 // Aucune analyse encore disponible pour cet onglet.
 function showNoData() {
-  setVerdict('loading', 'Naviguez sur un site e-commerce pour lancer l’analyse', '🧭');
+  setAlert('loading', 'En attente d’analyse', 'Naviguez sur un site e-commerce pour lancer l’analyse.');
   hideAllFlags();
   clearDynamicItems();
   setSectionVisible('preshot-flags-section', false);
@@ -153,7 +158,7 @@ function showNoData() {
 
 // Pas de connexion : l'analyse complète (ancienneté du domaine) est impossible.
 function showOffline() {
-  setVerdict('loading', 'Connexion internet requise pour l’analyse complète', '📡');
+  setAlert('loading', 'Hors connexion', 'Connexion internet requise pour l’analyse complète.');
   hideAllFlags();
   clearDynamicItems();
   setSectionVisible('preshot-flags-section', false);
@@ -162,7 +167,7 @@ function showOffline() {
 
 // Erreur côté API/messagerie : on reste transparent (diagnostic partiel).
 function showError() {
-  setVerdict('warning', 'Diagnostic partiel', '⚠️');
+  setAlert('warning', 'Diagnostic partiel', 'Voici les points que PreShot vérifie sur ce site :');
   hideAllFlags();
   clearDynamicItems();
 
@@ -191,10 +196,19 @@ function renderDiagnostic(data) {
 
   if (data.hostname) setDomain(data.hostname);
 
-  setVerdict(verdict.level, verdict.label);
-  setSectionVisible('preshot-flags-section', true);
+  const redFlags = Array.isArray(data.redFlags) ? data.redFlags : [];
+  const count = redFlags.length;
+
+  setAlert(
+    verdict.level,
+    anomaliesTitle(count),
+    ALERT_ADVICE[verdict.level] || ALERT_ADVICE.warning
+  );
+
+  // Aucune anomalie → l'encart vert suffit, on masque la liste des cards.
+  setSectionVisible('preshot-flags-section', count > 0);
   setSectionVisible('preshot-tips-section', true);
-  renderFlags(data.redFlags);
+  renderFlags(redFlags);
   renderTips(verdict.level);
 }
 
@@ -253,19 +267,6 @@ function injectReanalyzeButton() {
   btn.id = 'preshot-reanalyze';
   btn.type = 'button';
   btn.textContent = '↻ Re-analyser';
-  Object.assign(btn.style, {
-    marginTop: '10px',
-    padding: '6px 12px',
-    borderRadius: '8px',
-    border: '1px solid #e5e7eb',
-    background: '#ffffff',
-    color: '#4f46e5',
-    font: 'inherit',
-    fontSize: '13px',
-    fontWeight: '600',
-    cursor: 'pointer'
-  });
-
   btn.addEventListener('click', triggerReanalyze);
   header.appendChild(btn);
 }

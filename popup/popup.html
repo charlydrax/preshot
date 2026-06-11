@@ -5,25 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PreShot</title>
   <style>
-    /* Palette alignée sur le side panel (cohérence visuelle). */
+    /* Thème sombre aligné sur le side panel / la notification (maquette Figma). */
     :root {
-      --preshot-bg: #ffffff;
-      --preshot-text: #1e1b4b;
-      --preshot-text-soft: #4b5563;
-      --preshot-accent: #4f46e5;
-      --preshot-border: #e5e7eb;
-      --preshot-safe: #10b981;
-      --preshot-warning: #f59e0b;
-      --preshot-danger: #ef4444;
-      --preshot-neutral: #6b7280;
+      --preshot-bg: #0d1220;
+      --preshot-text: #ffffff;
+      --preshot-text-soft: rgba(255, 255, 255, 0.7);
+      --preshot-accent: #818cf8;
+      --preshot-card-bg: rgba(249, 250, 251, 0.15);
+      --preshot-card-border: rgba(236, 239, 243, 0.6);
+      --preshot-safe: #34d399;
+      --preshot-warning: #fbbf24;
+      --preshot-danger: #f87171;
+      --preshot-neutral: rgba(255, 255, 255, 0.25);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      width: 280px;
-      padding: 16px;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      width: 300px;
+      padding: 18px;
       background: var(--preshot-bg);
       color: var(--preshot-text);
       font-size: 14px;
@@ -36,7 +37,7 @@
       gap: 8px;
       font-size: 16px;
       font-weight: 700;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
     #preshot-popup-logo { font-size: 18px; }
 
@@ -45,10 +46,10 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 12px;
-      border-radius: 10px;
-      background: #f9fafb;
-      border: 1px solid var(--preshot-border);
+      padding: 13px;
+      border-radius: 16px;
+      background: var(--preshot-card-bg);
+      border: 1px solid var(--preshot-card-border);
       border-left: 4px solid var(--preshot-neutral);
       font-weight: 600;
     }
@@ -58,7 +59,7 @@
     #preshot-popup-state[data-level="warning"] { border-left-color: var(--preshot-warning); }
     #preshot-popup-state[data-level="danger"]  { border-left-color: var(--preshot-danger); }
     #preshot-popup-state[data-level="safe"]    #preshot-popup-state-label { color: var(--preshot-safe); }
-    #preshot-popup-state[data-level="warning"] #preshot-popup-state-label { color: #b45309; }
+    #preshot-popup-state[data-level="warning"] #preshot-popup-state-label { color: var(--preshot-warning); }
     #preshot-popup-state[data-level="danger"]  #preshot-popup-state-label { color: var(--preshot-danger); }
 
     #preshot-popup-domain {
@@ -71,19 +72,21 @@
     #preshot-popup-diagnostic {
       width: 100%;
       margin-top: 14px;
-      padding: 10px 12px;
-      border: none;
-      border-radius: 8px;
-      background: var(--preshot-accent);
+      padding: 11px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.12);
       color: #ffffff;
       font: inherit;
       font-weight: 600;
       cursor: pointer;
+      transition: background 0.15s ease;
     }
-    #preshot-popup-diagnostic:hover:not(:disabled) { background: #4338ca; }
+    #preshot-popup-diagnostic:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); }
     #preshot-popup-diagnostic:disabled {
-      background: #e5e7eb;
-      color: #9ca3af;
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.35);
       cursor: not-allowed;
     }
 
