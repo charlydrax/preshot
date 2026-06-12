@@ -85,6 +85,79 @@ body {
   word-break: break-all;
 }
 
+/* Ligne titre + bouton auth côte à côte. */
+#preshot-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Bouton « Se connecter » — pill compact, fond sombre contrasté. */
+.login-btn {
+  flex-shrink: 0;
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--preshot-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+.login-btn:hover { background: rgba(255, 255, 255, 0.16); }
+
+/* Photo de profil Google. */
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: block;
+}
+.user-avatar[hidden] { display: none; }
+
+/* Puce utilisateur connecté — même pill que .login-btn. */
+#preshot-panel-user {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 3px; /* 3px à gauche : l'avatar touche quasi le bord du pill */
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--preshot-text);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  max-width: 160px;
+}
+#preshot-panel-user:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.45);
+}
+#preshot-panel-user[hidden] { display: none; }
+
+#preshot-panel-user-name {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preshot-panel-logout-icon {
+  font-size: 10px;
+  color: var(--preshot-text-soft);
+  flex-shrink: 0;
+  line-height: 1;
+}
+#preshot-panel-user:hover .preshot-panel-logout-icon { color: var(--preshot-danger); }
+
 /* Bouton « ↻ Re-analyser » injecté par panel.js. */
 #preshot-reanalyze {
   margin-top: 12px;

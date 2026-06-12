@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "description": "Détecte les sites suspects au moment du paiement",
 
-  "permissions": ["activeTab", "storage", "sidePanel"],
-  "host_permissions": ["https://rdap.org/*"],
+  "permissions": ["activeTab", "storage", "sidePanel", "identity"],
+  "host_permissions": ["https://rdap.org/*", "https://www.googleapis.com/*", "https://accounts.google.com/*"],
 
   "icons": {
     "16": "icons/icon_normal_v5.png",
@@ -35,5 +35,10 @@
       "128": "icons/icon_normal_v5.png"
     },
     "default_popup": "popup/popup.html"
+  },
+
+  "oauth2": {
+    "client_id": "404244039317-i8f8p534m2jh2aep387llelkdfkuio8a.apps.googleusercontent.com",
+    "scopes": ["openid", "email", "profile"]
   }
 }

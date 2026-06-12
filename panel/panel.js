@@ -312,8 +312,122 @@ chrome.runtime.onMessage.addListener((message) => {
 window.addEventListener('online', loadStatus);
 
 // ------------------------------------------------------------
+// Auth — Google Identity
+// ------------------------------------------------------------
+
+function renderPanelUserInfo(user) {
+  const display = user.name
+    ? user.name.split(' ')[0]
+    : (user.email || '').split('@')[0];
+
+  // Avatar
+  const avatar = document.getElementById('user-avatar');
+  if (user.picture) {
+    avatar.src    = user.picture;
+    avatar.alt    = display;
+    avatar.hidden = false;
+  } else {
+    avatar.hidden = true;
+  }
+
+  document.getElementById('preshot-panel-user-name').textContent = display;
+
+  const chip = document.getElementById('preshot-panel-user');
+  chip.setAttribute('aria-label',
+    `Connecté en tant que ${user.email || display} — cliquez pour vous déconnecter`);
+  chip.hidden = false;
+
+  document.getElementById('login-btn').hidden = true;
+}
+
+function renderPanelLoggedOut() {
+  // Réinitialise l'avatar pour ne pas afficher une ancienne photo si
+  // l'utilisateur se reconnecte avec un autre compte.
+  const avatar = document.getElementById('user-avatar');
+  avatar.src    = '';
+  avatar.hidden = true;
+
+  document.getElementById('preshot-panel-user').hidden = true;
+  document.getElementById('login-btn').hidden = false;
+}
+
+function panelLogin() {
+  chrome.identity.getAuthToken({ interactive: true }, (token) => {
+    if (chrome.runtime.lastError || !token) {
+      console.warn('[PreShot] connexion : échec —',
+        chrome.runtime.lastError ? chrome.runtime.lastError.message : 'annulée');
+      return;
+    }
+
+    console.log('[PreShot] token obtenu :', token.slice(0, 12) + '…');
+
+    fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((user) => {
+        chrome.storage.local.set({
+          preshot_auth: { token, email: user.email, name: user.name, picture: user.picture }
+        });
+        renderPanelUserInfo(user);
+      })
+      .catch((err) => console.warn('[PreShot] userinfo error:', err));
+  });
+}
+
+function panelLogout() {
+  // 1. Récupère le token actuel dans le cache Chrome (non-interactif),
+  //    indépendamment de ce qui est stocké dans chrome.storage.local.
+  chrome.identity.getAuthToken({ interactive: false }, (token) => {
+    if (chrome.runtime.lastError || !token) {
+      console.log('[PreShot] déconnexion : aucun token en cache Chrome');
+      chrome.storage.local.remove('preshot_auth', () => {
+        console.log('[PreShot] storage.local vidé');
+        renderPanelLoggedOut();
+      });
+      return;
+    }
+
+    console.log('[PreShot] token obtenu pour révocation :', token.slice(0, 12) + '…');
+
+    // 2. Révocation côté Google — le token devient invalide même si Chrome
+    //    le garde encore en cache un instant.
+    fetch('https://accounts.google.com/o/oauth2/revoke?token=' + token)
+      .then(() => console.log('[PreShot] token révoqué côté Google'))
+      .catch((err) => console.warn('[PreShot] révocation Google échouée (nettoyage local quand même) :', err))
+      .finally(() => {
+        // 3. Supprime du cache Chrome (empêche getAuthToken de le réutiliser).
+        chrome.identity.removeCachedAuthToken({ token }, () => {
+          console.log('[PreShot] token supprimé du cache Chrome');
+          // 4. Vide notre storage.
+          chrome.storage.local.remove('preshot_auth', () => {
+            console.log('[PreShot] storage.local vidé');
+            renderPanelLoggedOut();
+          });
+        });
+      });
+  });
+}
+
+function checkPanelAuthState() {
+  chrome.storage.local.get('preshot_auth', ({ preshot_auth }) => {
+    if (preshot_auth && preshot_auth.email) {
+      renderPanelUserInfo(preshot_auth);
+    } else {
+      renderPanelLoggedOut();
+    }
+  });
+}
+
+// ------------------------------------------------------------
 // Init
 // ------------------------------------------------------------
 
 injectReanalyzeButton();
+document.getElementById('login-btn').addEventListener('click', panelLogin);
+document.getElementById('preshot-panel-user').addEventListener('click', panelLogout);
+checkPanelAuthState();
 loadStatus();

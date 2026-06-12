@@ -106,6 +106,107 @@
       color: var(--preshot-text-soft);
     }
     #preshot-popup-help-text ul { margin: 4px 0 0 16px; }
+
+    /* ── Section auth ──────────────────────────────────────── */
+    #preshot-auth-separator {
+      margin: 16px 0;
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.10);
+    }
+
+    #preshot-user-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: var(--preshot-card-bg);
+      border: 1px solid var(--preshot-card-border);
+      margin-bottom: 8px;
+    }
+
+    #preshot-user-avatar {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--preshot-accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    #preshot-user-avatar img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #preshot-user-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--preshot-text);
+    }
+    #preshot-user-email {
+      font-size: 11px;
+      color: var(--preshot-text-soft);
+      word-break: break-all;
+    }
+
+    #login-btn {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      font: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+    #login-btn:hover { background: rgba(255, 255, 255, 0.20); }
+
+    /* Lettre « G » colorée façon Google */
+    #login-btn-glyph {
+      font-size: 15px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #4285F4, #EA4335, #FBBC05, #34A853);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    #logout-btn {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--preshot-text-soft);
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: color 0.15s ease, background 0.15s ease;
+    }
+    #logout-btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.08); }
+
+    #preshot-auth-error {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--preshot-danger);
+    }
   </style>
 </head>
 <body>
@@ -136,6 +237,31 @@
       <li>ancienneté du domaine</li>
     </ul>
     Le diagnostic est indicatif : il crée le doute, il ne bloque jamais.
+  </div>
+
+  <hr id="preshot-auth-separator" aria-hidden="true">
+
+  <div id="preshot-popup-auth">
+    <!-- Utilisateur connecté -->
+    <div id="preshot-user-card" hidden>
+      <div id="preshot-user-avatar" aria-hidden="true"></div>
+      <div>
+        <div id="preshot-user-name"></div>
+        <div id="preshot-user-email"></div>
+      </div>
+    </div>
+
+    <!-- Non connecté -->
+    <button id="login-btn" type="button">
+      <span id="login-btn-glyph" aria-hidden="true">G</span>
+      Se connecter avec Google
+    </button>
+
+    <!-- Déconnexion -->
+    <button id="logout-btn" type="button" hidden>Se déconnecter</button>
+
+    <!-- Erreur -->
+    <p id="preshot-auth-error" hidden></p>
   </div>
 
   <script src="popup.js"></script>

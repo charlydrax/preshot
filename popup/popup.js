@@ -95,6 +95,8 @@ function init() {
       renderStatus(response);
     });
   });
+
+  checkAuthState();
 }
 
 // ------------------------------------------------------------
@@ -124,6 +126,107 @@ function toggleHelp(event) {
 
 document.getElementById('preshot-popup-diagnostic').addEventListener('click', openDiagnostic);
 document.getElementById('preshot-popup-help').addEventListener('click', toggleHelp);
+
+// ------------------------------------------------------------
+// Auth — Google Identity
+// ------------------------------------------------------------
+
+function renderUserInfo(user) {
+  const avatar = document.getElementById('preshot-user-avatar');
+
+  if (user.picture) {
+    const img = document.createElement('img');
+    img.src    = user.picture;
+    img.alt    = '';
+    img.width  = 36;
+    img.height = 36;
+    avatar.replaceChildren(img);
+  } else {
+    avatar.textContent = (user.name || user.email || '?')[0].toUpperCase();
+  }
+
+  document.getElementById('preshot-user-name').textContent  = user.name  || '';
+  document.getElementById('preshot-user-email').textContent = user.email || '';
+
+  document.getElementById('preshot-user-card').hidden   = false;
+  document.getElementById('login-btn').hidden           = true;
+  document.getElementById('logout-btn').hidden          = false;
+  document.getElementById('preshot-auth-error').hidden  = true;
+}
+
+function renderLoggedOut() {
+  document.getElementById('preshot-user-card').hidden   = true;
+  document.getElementById('login-btn').hidden           = false;
+  document.getElementById('logout-btn').hidden          = true;
+  document.getElementById('preshot-auth-error').hidden  = true;
+}
+
+function renderAuthError(msg) {
+  const err = document.getElementById('preshot-auth-error');
+  err.textContent = msg;
+  err.hidden = false;
+}
+
+function login() {
+  document.getElementById('preshot-auth-error').hidden = true;
+
+  chrome.identity.getAuthToken({ interactive: true }, (token) => {
+    if (chrome.runtime.lastError || !token) {
+      const detail = chrome.runtime.lastError
+        ? chrome.runtime.lastError.message
+        : 'annulée';
+      console.warn('[PreShot] auth error:', detail);
+      renderAuthError('Connexion impossible. Réessayez.');
+      return;
+    }
+
+    fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((user) => {
+        chrome.storage.local.set({
+          preshot_auth: { token, email: user.email, name: user.name, picture: user.picture }
+        });
+        renderUserInfo(user);
+      })
+      .catch((err) => {
+        console.warn('[PreShot] userinfo fetch error:', err);
+        renderAuthError('Impossible de récupérer le profil.');
+      });
+  });
+}
+
+function logout() {
+  chrome.storage.local.get('preshot_auth', ({ preshot_auth }) => {
+    const token = preshot_auth && preshot_auth.token;
+    const finish = () => {
+      chrome.storage.local.remove('preshot_auth');
+      renderLoggedOut();
+    };
+    if (token) {
+      chrome.identity.removeCachedAuthToken({ token }, finish);
+    } else {
+      finish();
+    }
+  });
+}
+
+function checkAuthState() {
+  chrome.storage.local.get('preshot_auth', ({ preshot_auth }) => {
+    if (preshot_auth && preshot_auth.email) {
+      renderUserInfo(preshot_auth);
+    } else {
+      renderLoggedOut();
+    }
+  });
+}
+
+document.getElementById('login-btn').addEventListener('click', login);
+document.getElementById('logout-btn').addEventListener('click', logout);
 
 // Mise à jour en direct : si une analyse se termine alors que le popup est
 // ouvert, le service worker diffuse ANALYSIS_COMPLETE → on rafraîchit l'état.

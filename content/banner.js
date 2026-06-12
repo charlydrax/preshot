@@ -153,6 +153,72 @@ function preshot_injectStyles() {
 }
 
 // ----------------------------------------------------------------
+// Thème adaptatif — détection du fond de page + contraste
+// ----------------------------------------------------------------
+
+function preshot_getPageBackgroundColor() {
+  for (const el of [document.body, document.documentElement]) {
+    const bg = getComputedStyle(el).backgroundColor;
+    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
+  }
+  return null;
+}
+
+function preshot_parseRGB(colorStr) {
+  const m = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  return m ? { r: +m[1], g: +m[2], b: +m[3] } : null;
+}
+
+function preshot_applyAdaptiveTheme(banner, verdict) {
+  const accentColors = { safe: '#10b981', warning: '#f59e0b' };
+  const accent = accentColors[verdict] || '#dc2626';
+
+  const bgStr = preshot_getPageBackgroundColor();
+  const rgb   = bgStr ? preshot_parseRGB(bgStr) : null;
+
+  // Border-left selon le verdict — toujours appliqué quel que soit le thème
+  banner.style.borderLeft = `4px solid ${accent}`;
+
+  if (!rgb) return; // fond non détectable → garder le CSS de la feuille de style
+
+  // luminance perceptuelle (formule Rec.601)
+  const luminance = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+  // page claire  (luminance > 128) → banner sombre pour contraster
+  // page sombre  (luminance ≤ 128) → banner clair pour contraster
+  const darkBanner = luminance > 128;
+
+  banner.style.background = darkBanner ? '#1f2937' : '#ffffff';
+  banner.style.color       = darkBanner ? '#f9fafb' : '#111827';
+  banner.style.border      = darkBanner
+    ? '1px solid rgba(255, 255, 255, 0.10)'
+    : '1px solid rgba(0, 0, 0, 0.10)';
+  // ré-appliquer après le shorthand border qui l'aurait écrasé
+  banner.style.borderLeft  = `4px solid ${accent}`;
+
+  const title = banner.querySelector('#preshot-banner-title');
+  if (title) title.style.color = darkBanner ? '#f9fafb' : '#111827';
+
+  const msg = banner.querySelector('#preshot-banner-message');
+  if (msg) msg.style.color = darkBanner
+    ? 'rgba(249, 250, 251, 0.85)'
+    : 'rgba(17, 24, 39, 0.75)';
+
+  const cta = banner.querySelector('#preshot-banner-cta');
+  if (cta) {
+    cta.style.background = darkBanner ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.06)';
+    cta.style.color      = darkBanner ? '#f9fafb'  : '#111827';
+    cta.style.border     = darkBanner
+      ? '1px solid rgba(255, 255, 255, 0.15)'
+      : '1px solid rgba(0, 0, 0, 0.12)';
+  }
+
+  const close = banner.querySelector('#preshot-banner-close');
+  if (close) close.style.color = darkBanner
+    ? 'rgba(249, 250, 251, 0.50)'
+    : 'rgba(17, 24, 39, 0.40)';
+}
+
+// ----------------------------------------------------------------
 // Helpers — copie de la bannière selon le verdict
 // ----------------------------------------------------------------
 
@@ -213,6 +279,7 @@ function preshot_injectBanner(redFlagsCount, verdict) {
     <button id="preshot-banner-cta">Voir le diagnostic</button>
   `;
 
+  preshot_applyAdaptiveTheme(banner, verdict);
   document.body.appendChild(banner);
 
   // Double rAF : garantit que le navigateur a peint l'état initial

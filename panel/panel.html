@@ -12,7 +12,19 @@
        panel.js injecte le bouton « Re-analyser » dans ce header.
        ============================================================ -->
   <header id="preshot-panel-header">
-    <h1 id="preshot-panel-title">Diagnostic rapide</h1>
+    <div id="preshot-header-top">
+      <h1 id="preshot-panel-title">Diagnostic rapide</h1>
+      <div id="preshot-header-auth">
+        <!-- Non connecté -->
+        <button id="login-btn" class="login-btn" type="button">Se connecter</button>
+        <!-- Connecté : clic sur toute la puce → déconnexion -->
+        <button id="preshot-panel-user" type="button" hidden title="Se déconnecter">
+          <img id="user-avatar" class="user-avatar" src="" alt="" hidden>
+          <span id="preshot-panel-user-name"></span>
+          <span class="preshot-panel-logout-icon" aria-hidden="true">✕</span>
+        </button>
+      </div>
+    </div>
     <!-- Domaine injecté par panel.js (data.hostname). -->
     <p id="preshot-panel-domain">—</p>
   </header>
