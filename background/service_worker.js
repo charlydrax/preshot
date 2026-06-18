@@ -31,8 +31,8 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 // Couleur de fond du badge (rouge) — appliquée dès qu'un chiffre s'affiche.
 const BADGE_COLOR = '#dc2626';
 
-// L'icône de la barre d'outils est FIXE (icon_normal_v5, déclarée dans le
-// manifest). On ne la change plus selon le niveau de risque : le badge
+// L'icône de la barre d'outils est FIXE (déclarée dans le manifest, jeu
+// icon_16/32/48/128). On ne la change plus selon le niveau de risque : le badge
 // numérique rouge suffit à signaler les red flags. Cela évite aussi l'appel
 // chrome.action.setIcon() qui échouait par moments ("Failed to fetch").
 
@@ -60,6 +60,54 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   // Message inconnu : on ne garde pas le canal ouvert.
   return false;
+});
+
+// ------------------------------------------------------------
+// Popup centrée — clic sur l'icône de la barre d'outils
+// ------------------------------------------------------------
+// Le manifest ne déclare plus de default_popup : Chrome ancre toujours la
+// popup classique sous l'icône, sans possibilité de la déplacer. On ouvre
+// donc popup.html dans une petite fenêtre centrée sur la fenêtre courante.
+// L'id de l'onglet actif est passé en query string : une fois dans sa propre
+// fenêtre, popup.js ne peut plus utiliser "l'onglet actif" (ce serait la
+// popup elle-même).
+const POPUP_WIDTH = 340;
+const POPUP_HEIGHT = 600;
+let popupWindowId = null;
+
+chrome.action.onClicked.addListener(async (tab) => {
+  try {
+    // Une popup déjà ouverte → on la remet au premier plan au lieu d'empiler.
+    if (popupWindowId !== null) {
+      try {
+        await chrome.windows.update(popupWindowId, { focused: true });
+        return;
+      } catch {
+        popupWindowId = null; // fenêtre fermée entre-temps
+      }
+    }
+
+    const current = await chrome.windows.get(tab.windowId);
+    const left = Math.round((current.left || 0) + ((current.width || POPUP_WIDTH) - POPUP_WIDTH) / 2);
+    const top = Math.round((current.top || 0) + ((current.height || POPUP_HEIGHT) - POPUP_HEIGHT) / 2);
+
+    const win = await chrome.windows.create({
+      url: chrome.runtime.getURL('popup/popup.html') + '?tabId=' + tab.id,
+      type: 'popup',
+      width: POPUP_WIDTH,
+      height: POPUP_HEIGHT,
+      left,
+      top,
+      focused: true
+    });
+    popupWindowId = win.id;
+  } catch (err) {
+    console.error('[PreShot] action.onClicked error:', err);
+  }
+});
+
+chrome.windows.onRemoved.addListener((windowId) => {
+  if (windowId === popupWindowId) popupWindowId = null;
 });
 
 // ------------------------------------------------------------
@@ -141,7 +189,19 @@ async function handleGetStatus(message, sender, sendResponse) {
   try {
     console.log('[PreShot] GET_STATUS received');
 
-    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    // La popup (fenêtre séparée) envoie l'id de l'onglet qu'elle cible :
+    // "l'onglet actif" serait la popup elle-même.
+    let activeTab = null;
+    if (typeof message.tabId === 'number') {
+      try {
+        activeTab = await chrome.tabs.get(message.tabId);
+      } catch {
+        // onglet fermé entre-temps → fallback onglet actif
+      }
+    }
+    if (!activeTab) {
+      [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    }
 
     // Pas d'onglet du tout → rien à montrer.
     if (!activeTab) {

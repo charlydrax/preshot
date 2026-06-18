@@ -17,12 +17,13 @@
       <div id="preshot-header-auth">
         <!-- Non connecté -->
         <button id="login-btn" class="login-btn" type="button">Se connecter</button>
-        <!-- Connecté : clic sur toute la puce → déconnexion -->
-        <button id="preshot-panel-user" type="button" hidden title="Se déconnecter">
+        <!-- Connecté : seule la croix déconnecte, pas la puce entière -->
+        <div id="preshot-panel-user" hidden>
           <img id="user-avatar" class="user-avatar" src="" alt="" hidden>
           <span id="preshot-panel-user-name"></span>
-          <span class="preshot-panel-logout-icon" aria-hidden="true">✕</span>
-        </button>
+          <button id="panel-logout-btn" class="preshot-panel-logout-icon" type="button"
+                  title="Se déconnecter" aria-label="Se déconnecter">✕</button>
+        </div>
       </div>
     </div>
     <!-- Domaine injecté par panel.js (data.hostname). -->

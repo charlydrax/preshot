@@ -333,8 +333,7 @@ function renderPanelUserInfo(user) {
   document.getElementById('preshot-panel-user-name').textContent = display;
 
   const chip = document.getElementById('preshot-panel-user');
-  chip.setAttribute('aria-label',
-    `Connecté en tant que ${user.email || display} — cliquez pour vous déconnecter`);
+  chip.setAttribute('aria-label', `Connecté en tant que ${user.email || display}`);
   chip.hidden = false;
 
   document.getElementById('login-btn').hidden = true;
@@ -358,8 +357,6 @@ function panelLogin() {
         chrome.runtime.lastError ? chrome.runtime.lastError.message : 'annulée');
       return;
     }
-
-    console.log('[PreShot] token obtenu :', token.slice(0, 12) + '…');
 
     fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${token}` }
@@ -390,8 +387,6 @@ function panelLogout() {
       });
       return;
     }
-
-    console.log('[PreShot] token obtenu pour révocation :', token.slice(0, 12) + '…');
 
     // 2. Révocation côté Google — le token devient invalide même si Chrome
     //    le garde encore en cache un instant.
@@ -428,6 +423,6 @@ function checkPanelAuthState() {
 
 injectReanalyzeButton();
 document.getElementById('login-btn').addEventListener('click', panelLogin);
-document.getElementById('preshot-panel-user').addEventListener('click', panelLogout);
+document.getElementById('panel-logout-btn').addEventListener('click', panelLogout);
 checkPanelAuthState();
 loadStatus();

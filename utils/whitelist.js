@@ -28,7 +28,7 @@ const TRUSTED_DOMAINS = [
 // normalizeHostname(hostname)
 // ------------------------------------------------------------
 // Ramène une valeur (hostname ou URL complète) à un hostname nu, en
-// minuscules, sans schéma, port, chemin ni "www.".
+// minuscules,   schéma, port, chemin ni "www.".
 function normalizeHostname(hostname) {
   if (typeof hostname !== 'string') return '';
 

@@ -83,10 +83,18 @@ function renderStatus(status) {
 // ------------------------------------------------------------
 
 function init() {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    activeTab = (tabs && tabs[0]) || null;
+  // Ouverte dans sa propre fenêtre (centrée), la popup reçoit l'id de
+  // l'onglet à diagnostiquer en query string : "l'onglet actif" de sa
+  // fenêtre serait la popup elle-même.
+  const tabId = Number(new URLSearchParams(location.search).get('tabId'));
 
-    chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (response) => {
+  const onTab = (tab) => {
+    activeTab = tab || null;
+
+    const msg = { type: 'GET_STATUS' };
+    if (activeTab && activeTab.id != null) msg.tabId = activeTab.id;
+
+    chrome.runtime.sendMessage(msg, (response) => {
       if (chrome.runtime.lastError) {
         console.warn('[PreShot] GET_STATUS error:', chrome.runtime.lastError.message);
         renderNeutral();
@@ -94,7 +102,17 @@ function init() {
       }
       renderStatus(response);
     });
-  });
+  };
+
+  if (Number.isInteger(tabId) && tabId > 0) {
+    chrome.tabs.get(tabId, (tab) => {
+      onTab(chrome.runtime.lastError ? null : tab);
+    });
+  } else {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      onTab((tabs && tabs[0]) || null);
+    });
+  }
 
   checkAuthState();
 }
